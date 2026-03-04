@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Products — InventoryIQ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Products</h2>
+    <a href="{% url 'product_add' %}" class="btn btn-dark">+ Add Product</a>
+</div>
+
+{% if products %}
+<div class="list-group">
+    {% for product in products %}
+    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+        <div>
+            <strong>{{ product.name }}</strong>
+            {% if product.category %}<span class="text-muted ms-2 small">{{ product.category }}</span>{% endif %}
+            {% if product.is_low_stock %}
+            <span class="badge bg-danger ms-2">Low Stock</span>
+            {% endif %}
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold">{{ product.quantity }}</span>
+            <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+            <a href="{% url 'product_delete' product.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No products yet. <a href="{% url 'product_add' %}">Add your first product.</a></p>
+{% endif %}
+{% endblock %}

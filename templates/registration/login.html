@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Login — InventoryIQ{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-12 col-sm-8 col-md-5">
+        <div class="card p-4">
+            <h2 class="text-center mb-4">InventoryIQ</h2>
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control form-control-lg" autofocus required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control form-control-lg" required>
+                </div>
+                {% if form.errors %}
+                <div class="alert alert-danger">Incorrect username or password.</div>
+                {% endif %}
+                <button type="submit" class="btn btn-dark w-100 btn-lg">Log In</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
