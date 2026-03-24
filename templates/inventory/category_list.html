@@ -5,29 +5,23 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Products</h2>
     <div class="d-flex gap-2">
-<<<<<<< HEAD
-=======
         <a href="{% url 'category_list' %}" class="btn btn-outline-secondary">Categories</a>
->>>>>>> lalo
         <a href="{% url 'export_csv' %}" class="btn btn-outline-secondary">Export CSV</a>
         <a href="{% url 'product_add' %}" class="btn btn-dark">+ Add Product</a>
     </div>
 </div>
 
-<!-- Search and filter form -->
+<!-- Search and category filter form -->
 <form method="get" class="row g-2 mb-4">
-
-    <!-- Search input -->
     <div class="col-12 col-md-6">
-        <input 
-            type="text" 
-            name="q" 
-            value="{{ query }}" 
-            class="form-control" 
-            placeholder="Search products...">
+        <input
+            type="text"
+            name="q"
+            value="{{ query }}"
+            class="form-control"
+            placeholder="Search products..."
+        >
     </div>
-
-    <!-- Category dropdown filter -->
     <div class="col-12 col-md-4">
         <select name="category" class="form-select">
             <option value="">All Categories</option>
@@ -39,8 +33,6 @@
             {% endfor %}
         </select>
     </div>
-
-    <!-- Submit button -->
     <div class="col-12 col-md-2">
         <button type="submit" class="btn btn-dark w-100">Search</button>
     </div>

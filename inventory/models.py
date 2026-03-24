@@ -2,6 +2,7 @@ from django.db import models
 
 
 class Category(models.Model):
+    """ Represents a product category used for organizing and filtering products in the inventory. """
     name = models.CharField(max_length=100)
 
     def __str__(self):
@@ -12,6 +13,7 @@ class Category(models.Model):
 
 
 class Product(models.Model):
+    """ Represents a product in the inventory. """
     name = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=0)
