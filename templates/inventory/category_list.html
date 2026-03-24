@@ -1,73 +1,27 @@
 {% extends 'base.html' %}
-{% block title %}Products — InventoryIQ{% endblock %}
+{% block title %}Categories — InventoryIQ{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Products</h2>
-    <div class="d-flex gap-2">
-        <a href="{% url 'category_list' %}" class="btn btn-outline-secondary">Categories</a>
-        <a href="{% url 'export_csv' %}" class="btn btn-outline-secondary">Export CSV</a>
-        <a href="{% url 'product_add' %}" class="btn btn-dark">+ Add Product</a>
-    </div>
+    <h2>Categories</h2>
+    <a href="{% url 'category_add' %}" class="btn btn-dark">+ Add Category</a>
 </div>
 
-<!-- Search and category filter form -->
-<form method="get" class="row g-2 mb-4">
-    <div class="col-12 col-md-6">
-        <input
-            type="text"
-            name="q"
-            value="{{ query }}"
-            class="form-control"
-            placeholder="Search products..."
-        >
-    </div>
-    <div class="col-12 col-md-4">
-        <select name="category" class="form-select">
-            <option value="">All Categories</option>
-            {% for category in categories %}
-                <option value="{{ category.id }}"
-                    {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>
-                    {{ category.name }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-12 col-md-2">
-        <button type="submit" class="btn btn-dark w-100">Search</button>
-    </div>
-</form>
-
-{% if products %}
+{% if categories %}
 <div class="list-group">
-    {% for product in products %}
-    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+    {% for category in categories %}
+    <a href="{% url 'category_detail' category.pk %}"
+       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3">
         <div>
-            <strong>{{ product.name }}</strong>
-            {% if product.category %}<span class="text-muted ms-2 small">{{ product.category }}</span>{% endif %}
-            {% if product.is_low_stock %}
-            <span class="badge bg-danger ms-2">Low Stock</span>
-            {% endif %}
+            <strong>{{ category.name }}</strong>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="decrement">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">−</button>
-            </form>
-            <span class="fw-bold mx-1">{{ product.quantity }}</span>
-            <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="increment">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">+</button>
-            </form>
-            <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
-            <a href="{% url 'product_delete' product.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+        <div class="text-muted small">
+            {{ category.product_set.count }} product{{ category.product_set.count|pluralize }}
         </div>
-    </div>
+    </a>
     {% endfor %}
 </div>
 {% else %}
-<p class="text-muted">No products yet. <a href="{% url 'product_add' %}">Add your first product.</a></p>
+<p class="text-muted">No categories yet. Add your first category.</p>
 {% endif %}
 {% endblock %}
