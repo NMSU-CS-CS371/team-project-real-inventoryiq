@@ -21,7 +21,8 @@
             name="q" 
             value="{{ query }}" 
             class="form-control" 
-            placeholder="Search products...">
+            placeholder="Search products..."
+        >
     </div>
 
     <!-- Category dropdown filter -->
@@ -46,7 +47,18 @@
 {% if grouped_products %}
     {% for group_name, products_in_group in grouped_products %}
         <div class="mb-4">
-            <h4 class="mb-3">{{ group_name }}</h4>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">{{ group_name }}</h4>
+                {% if group_name != "Not Under Category" %}
+                    {% for category in categories %}
+                        {% if category.name == group_name %}
+                            <a href="{% url 'category_detail' category.pk %}" class="btn btn-sm btn-outline-secondary">
+                                Open Category
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </div>
 
             <div class="list-group">
                 {% for product in products_in_group %}
@@ -56,40 +68,32 @@
                         {% if product.is_low_stock %}
                         <span class="badge bg-danger ms-2">Low Stock</span>
                         {% endif %}
+                        {% if product.description %}
+                        <div class="text-muted small mt-1">{{ product.description }}</div>
+                        {% endif %}
                     </div>
+
                     <div class="d-flex align-items-center gap-2">
-                        <span class="fw-bold">{{ product.quantity }}</span>
+                        <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="decrement">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">−</button>
+                        </form>
+
+                        <span class="fw-bold mx-1">{{ product.quantity }}</span>
+
+                        <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="increment">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">+</button>
+                        </form>
+
                         <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
                         <a href="{% url 'product_delete' product.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
                     </div>
                 </div>
                 {% endfor %}
             </div>
-{% if products %}
-<div class="list-group">
-    {% for product in products %}
-    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-        <div>
-            <strong>{{ product.name }}</strong>
-            {% if product.category %}<span class="text-muted ms-2 small">{{ product.category }}</span>{% endif %}
-            {% if product.is_low_stock %}
-            <span class="badge bg-danger ms-2">Low Stock</span>
-            {% endif %}
-        </div>
-        <div class="d-flex align-items-center gap-2">
-            <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="decrement">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">−</button>
-            </form>
-            <span class="fw-bold mx-1">{{ product.quantity }}</span>
-            <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="increment">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">+</button>
-            </form>
-            <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
-            <a href="{% url 'product_delete' product.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
         </div>
     {% endfor %}
 {% else %}

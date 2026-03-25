@@ -3,9 +3,11 @@ from django.db import models
 
 class Category(models.Model):
     """ Represents a product category used for organizing and filtering products in the inventory. """
+
     name = models.CharField(max_length=100)
 
     def __str__(self):
+        """ Return the category name for display purposes. """
         return self.name
 
     class Meta:
@@ -14,6 +16,7 @@ class Category(models.Model):
 
 class Product(models.Model):
     """ Represents a product in the inventory. """
+
     name = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=0)
@@ -23,8 +26,10 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True) 
 
     def __str__(self):
+        """ Return the product name for display purposes. """
         return self.name
 
     @property
     def is_low_stock(self):
+        """ Return True if the product quantity is at or below the low stock threshold. """
         return self.quantity <= self.low_stock_threshold
