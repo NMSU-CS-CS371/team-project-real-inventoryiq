@@ -3,6 +3,7 @@ import csv
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -274,6 +275,36 @@ def adjust_quantity(request, pk):
     if product.category:
         return redirect("category_detail", pk=product.category.pk)
     return redirect("product_list")
+
+
+@login_required
+def finances(request):
+    """Display the total retail value of all inventory stock."""
+
+    products = Product.objects.select_related("category").all().order_by("name")
+
+    product_data = []
+    grand_total = 0
+
+    for product in products:
+        retail = product.retail_value or 0
+        line_total = retail * product.quantity
+        grand_total += line_total
+        product_data.append(
+            {
+                "name": product.name,
+                "category": product.category,
+                "retail_value": retail,
+                "quantity": product.quantity,
+                "line_total": line_total,
+            }
+        )
+
+    context = {
+        "product_data": product_data,
+        "grand_total": grand_total,
+    }
+    return render(request, "inventory/finances.html", context)
 
 
 @login_required

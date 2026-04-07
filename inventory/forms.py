@@ -11,6 +11,7 @@ class ProductForm(forms.ModelForm):
         fields = [
             "name",
             "sku_number",
+            "retail_value",
             "category",
             "quantity",
             "low_stock_threshold",
@@ -34,6 +35,9 @@ class ProductForm(forms.ModelForm):
                 }
             ),
             "sku_number": forms.TextInput(attrs={"class": "form-control"}),
+            "retail_value": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01"}
+            ),
         }
 
 

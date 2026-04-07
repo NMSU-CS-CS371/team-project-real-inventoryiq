@@ -28,6 +28,9 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     sku_number = models.CharField(max_length=100, unique=True, blank=True, null=True)
     low_stock_notified = models.BooleanField(default=False)
+    retail_value = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
 
     def __str__(self):
         """Return the product name for display purposes."""
