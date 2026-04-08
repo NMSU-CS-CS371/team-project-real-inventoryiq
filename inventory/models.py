@@ -5,13 +5,22 @@ class Category(models.Model):
     """Represents a product category used for organizing and filtering products in the inventory."""
 
     name = models.CharField(max_length=100)
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='subcategories'
+    )
 
     def __str__(self):
-        """Return the category name for display purposes."""
+        if self.parent:
+            return f"{self.parent.name} > {self.name}"
         return self.name
 
     class Meta:
         verbose_name_plural = "Categories"
+        ordering = ["name"]
 
 
 class Product(models.Model):

@@ -18,5 +18,6 @@ urlpatterns = [
     # Category routes
     path('categories/', views.category_list, name='category_list'),
     path('categories/add/', views.category_add, name='category_add'),
+    path('categories/<int:pk>/delete/', views.category_delete, name='category_delete'),
     path('categories/<int:pk>/', views.category_detail, name='category_detail'),
 ]

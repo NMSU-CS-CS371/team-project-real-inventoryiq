@@ -11,9 +11,27 @@
     </div>
     <div class="d-flex gap-2">
         <a href="{% url 'product_add' %}?category={{ category.id }}" class="btn btn-dark">+ Add Product</a>
+        <a href="{% url 'category_delete' category.pk %}" class="btn btn-outline-danger">Delete Category</a>
         <a href="{% url 'category_list' %}" class="btn btn-outline-secondary">Back to Categories</a>
     </div>
 </div>
+
+{% if subcategories %}
+<form method="get" class="mb-4">
+    <label class="form-label fw-semibold">Subcategories</label>
+    <div class="d-flex gap-2">
+        <select name="subcategory" class="form-select">
+            <option value="">All</option>
+            {% for subcategory in subcategories %}
+                <option value="{{ subcategory.id }}" {% if selected_subcategory == subcategory.id|stringformat:"s" %}selected{% endif %}>
+                    {{ subcategory.name }}
+                </option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-dark">Apply</button>
+    </div>
+</form>
+{% endif %}
 
 {% if products %}
 <div class="list-group">
@@ -29,20 +47,7 @@
             {% endif %}
         </div>
         <div class="d-flex align-items-center gap-2">
-            <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="decrement">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">−</button>
-            </form>
-
-            <span class="fw-bold mx-1">{{ product.quantity }}</span>
-
-            <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="increment">
-                <button type="submit" class="btn btn-sm btn-outline-secondary">+</button>
-            </form>
-
+            <span class="fw-bold">Qty: {{ product.quantity }}</span>
             <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
             <a href="{% url 'product_delete' product.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
         </div>

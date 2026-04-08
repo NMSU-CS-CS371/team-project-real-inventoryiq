@@ -2,7 +2,7 @@ import csv
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -14,19 +14,54 @@ from .utils import send_low_stock_email
 
 @login_required
 def dashboard(request):
-    """Display inventory dashboard with key metrics and low stock alerts."""
+    query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    category_filter = request.GET.get('category', '').strip()
 
-    # Calculate total products and identify low stock items
-    products = Product.objects.all()
-    low_stock_products = [p for p in products if p.is_low_stock]
+    products = Product.objects.select_related('category').all().order_by('-updated_at')
+    categories = Category.objects.all().order_by('name')
 
-    # Data sent to the dashboard template
+    if query:
+        products = products.filter(
+            Q(name__icontains=query) |
+            Q(description__icontains=query) |
+            Q(category__name__icontains=query)
+        )
+
+    if category_filter:
+        products = products.filter(category_id=category_filter)
+
+    filtered_products = list(products)
+
+    if status_filter == 'critical':
+        filtered_products = [p for p in filtered_products if p.quantity <= 2]
+    elif status_filter == 'low':
+        filtered_products = [p for p in filtered_products if p.is_low_stock and p.quantity > 2]
+    elif status_filter == 'healthy':
+        filtered_products = [p for p in filtered_products if not p.is_low_stock]
+
+    all_products = list(Product.objects.select_related('category').all())
+    low_stock_products = [p for p in all_products if p.is_low_stock]
+    critical_products = [p for p in all_products if p.quantity <= 2]
+
+    category_breakdown = Category.objects.annotate(product_count=Count('product')).order_by('name')
+
     context = {
-        "total_products": products.count(),
-        "low_stock_count": len(low_stock_products),
-        "low_stock_products": low_stock_products,
+        'total_products': len(all_products),
+        'low_stock_count': len(low_stock_products),
+        'total_categories': Category.objects.count(),
+        'inventory_value': '—',
+        'recent_products': filtered_products[:8],
+        'critical_products': critical_products[:5],
+        'category_breakdown': category_breakdown,
+        'categories': categories,
+        'query': query,
+        'selected_status': status_filter,
+        'selected_category': category_filter,
+        'activity_items': all_products[:5],
     }
-    return render(request, "inventory/dashboard.html", context)
+
+    return render(request, 'inventory/dashboard.html', context)
 
 
 @login_required
@@ -184,10 +219,8 @@ def product_delete(request, pk):
 
 @login_required
 def category_list(request):
-    """Display a list of all product categories."""
-
-    categories = Category.objects.all().order_by("name")
-    return render(request, "inventory/category_list.html", {"categories": categories})
+    parent_categories = Category.objects.filter(parent__isnull=True).prefetch_related('subcategories').order_by('name')
+    return render(request, 'inventory/category_list.html', {'categories': parent_categories})
 
 
 @login_required
@@ -214,35 +247,34 @@ def category_add(request):
 
 @login_required
 def category_detail(request, pk):
-    """Display one category and all products assigned to it."""
-
     category = get_object_or_404(Category, pk=pk)
-    products = Product.objects.filter(category=category).order_by("name")
+    subcategories = category.subcategories.all().order_by('name')
+    products = Product.objects.filter(category=category).order_by('name')
 
-    return render(
-        request,
-        "inventory/category_detail.html",
-        {
-            "category": category,
-            "products": products,
-        },
-    )
+    selected_subcategory = request.GET.get('subcategory', '').strip()
+    if selected_subcategory:
+        products = Product.objects.filter(category_id=selected_subcategory).order_by('name')
+
+    return render(request, 'inventory/category_detail.html', {
+        'category': category,
+        'products': products,
+        'subcategories': subcategories,
+        'selected_subcategory': selected_subcategory,
+    })
 
 
 @login_required
-def category_detail(request, pk):
-    """Display one category and all products assigned to it."""
+def category_delete(request, pk):
     category = get_object_or_404(Category, pk=pk)
-    products = Product.objects.filter(category=category).order_by("name")
 
-    return render(
-        request,
-        "inventory/category_detail.html",
-        {
-            "category": category,
-            "products": products,
-        },
-    )
+    if request.method == 'POST':
+        category.delete()
+        messages.success(request, 'Category deleted successfully.')
+        return redirect('category_list')
+
+    return render(request, 'inventory/category_confirm_delete.html', {
+        'category': category,
+    })
 
 
 @login_required
