@@ -5,9 +5,50 @@
 <style>
     .dashboard-page {
         background: #0a0a0a;
-        min-height: 100vh;
+        min-height: calc(100vh - 80px);
         color: #fff;
-        padding: 0.5rem 0 2rem 0;
+        padding: 0;
+        width: 100%;
+    }
+
+    .dashboard-page .container-fluid {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    .dashboard-page h1,
+    .dashboard-page h2,
+    .dashboard-page h3,
+    .dashboard-page h4,
+    .dashboard-page h5,
+    .dashboard-page h6,
+    .dashboard-page p,
+    .dashboard-page span,
+    .dashboard-page div,
+    .dashboard-page th,
+    .dashboard-page td,
+    .dashboard-page label {
+        color: inherit;
+    }
+
+    .dashboard-page h2,
+    .dashboard-page h3,
+    .dashboard-page h4 {
+        color: #fff !important;
+    }
+
+    .dashboard-page .dash-card,
+    .dashboard-page .dash-card-soft {
+        color: #fff;
+    }
+
+    .dashboard-page .dash-title {
+        color: #fff !important;
+    }
+
+    .dashboard-page .table-dark-custom th,
+    .dashboard-page .table-dark-custom td {
+        color: #fff !important;
     }
 
     .dash-card {
@@ -136,7 +177,7 @@
 </style>
 
 <div class="dashboard-page">
-    <div class="container-fluid px-0">
+    <div class="container-fluid">
         <div class="d-flex flex-column section-gap">
 
             <!-- HEADER -->
