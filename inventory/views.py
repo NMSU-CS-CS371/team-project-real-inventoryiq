@@ -399,18 +399,27 @@ def finances(request):
 
     product_data = []
     grand_total = 0
+    total_cost = 0
+    potential_profit = 0
 
     for product in products:
         retail = product.retail_value or 0
+        cost = product.cost_value or 0
         line_total = retail * product.quantity
+        line_cost = cost * product.quantity
+        line_profit = (retail - cost) * product.quantity
         grand_total += line_total
+        total_cost += line_cost
+        potential_profit += line_profit
         product_data.append(
             {
                 "name": product.name,
                 "category": product.category,
                 "retail_value": retail,
+                "cost_value": cost,
                 "quantity": product.quantity,
                 "line_total": line_total,
+                "line_profit": line_profit,
             }
         )
 
@@ -420,6 +429,8 @@ def finances(request):
     context = {
         "product_data": product_data,
         "grand_total": grand_total,
+        "total_cost": total_cost,
+        "potential_profit": potential_profit,
         "expenses": expenses,
         "expenses_total": expenses_total,
         "net_inventory_value": net_inventory_value,

@@ -41,6 +41,9 @@ class Product(models.Model):
     retail_value = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
+    cost_value = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
 
     def __str__(self):
         """Return the product name for display purposes."""

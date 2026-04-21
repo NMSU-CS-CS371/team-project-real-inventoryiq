@@ -20,6 +20,7 @@
     .finance-metric-card.metric-inventory::before { background: #10b981; }
     .finance-metric-card.metric-expenses::before { background: #ef4444; }
     .finance-metric-card.metric-net::before { background: #0f172a; }
+    .finance-metric-card.metric-profit::before { background: #2563eb; }
 
     .finance-metric-value {
         font-family: 'DM Mono', monospace;
@@ -31,6 +32,7 @@
     .metric-inventory .finance-metric-value { color: #059669; }
     .metric-expenses .finance-metric-value { color: #dc2626; }
     .metric-net .finance-metric-value { color: #0f172a; }
+    .metric-profit .finance-metric-value { color: #2563eb; }
 
     .expense-history-card {
         border-radius: var(--radius-lg);
@@ -44,19 +46,25 @@
 <h2 class="mb-4">Finances</h2>
 
 <div class="row g-3 mb-4">
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-6 col-lg-3">
         <div class="card finance-metric-card metric-inventory text-center p-3">
             <div class="finance-metric-value">${{ grand_total|floatformat:2 }}</div>
             <div class="text-muted">Inventory Total</div>
         </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="card finance-metric-card metric-profit text-center p-3">
+            <div class="finance-metric-value">${{ potential_profit|floatformat:2 }}</div>
+            <div class="text-muted">Total Potential Profit</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
         <div class="card finance-metric-card metric-expenses text-center p-3">
             <div class="finance-metric-value">-${{ expenses_total|floatformat:2 }}</div>
             <div class="text-muted">Total Expenses</div>
         </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-md-6 col-lg-3">
         <div class="card finance-metric-card metric-net text-center p-3">
             <div class="finance-metric-value">${{ net_inventory_value|floatformat:2 }}</div>
             <div class="text-muted">Net Inventory Value</div>
@@ -124,9 +132,11 @@
                 <tr>
                     <th>Product</th>
                     <th>Category</th>
+                    <th class="text-end">Cost</th>
                     <th class="text-end">Retail Value</th>
                     <th class="text-end">Quantity</th>
                     <th class="text-end">Total</th>
+                    <th class="text-end">Profit</th>
                 </tr>
             </thead>
             <tbody>
@@ -134,16 +144,19 @@
                 <tr>
                     <td>{{ item.name }}</td>
                     <td class="text-muted">{% if item.category %}{{ item.category }}{% else %}Not Under Category{% endif %}</td>
+                    <td class="text-end">${{ item.cost_value|floatformat:2 }}</td>
                     <td class="text-end">${{ item.retail_value|floatformat:2 }}</td>
                     <td class="text-end">{{ item.quantity }}</td>
                     <td class="text-end fw-semibold">${{ item.line_total|floatformat:2 }}</td>
+                    <td class="text-end fw-semibold">${{ item.line_profit|floatformat:2 }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="4" class="text-end fw-bold">Grand Total</td>
+                    <td colspan="5" class="text-end fw-bold">Grand Total</td>
                     <td class="text-end fw-bold">${{ grand_total|floatformat:2 }}</td>
+                    <td class="text-end fw-bold">${{ potential_profit|floatformat:2 }}</td>
                 </tr>
             </tfoot>
         </table>
