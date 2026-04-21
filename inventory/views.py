@@ -1,4 +1,5 @@
 import csv
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -7,8 +8,8 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import CategoryForm, ProductForm
-from .models import Category, Product
+from .forms import CategoryForm, ProductForm, ExpenseForm
+from .models import Category, Product, Expense
 from .utils import send_low_stock_email
 
 
@@ -43,6 +44,72 @@ def dashboard(request):
     all_products = list(Product.objects.select_related('category').all())
     low_stock_products = [p for p in all_products if p.is_low_stock]
     critical_products = [p for p in all_products if p.quantity <= 2]
+    category_nodes = {
+        category.id: {"name": category.name, "parent_id": category.parent_id}
+        for category in Category.objects.all()
+    }
+    finance_category_map = {}
+    expenses = list(Expense.objects.all())
+    expenses_total = sum((expense.amount for expense in expenses), Decimal("0.00"))
+    grand_total = 0
+
+    for product in all_products:
+        retail = product.retail_value or 0
+        line_total = retail * product.quantity
+        grand_total += line_total
+
+        if product.category_id:
+            top_level_id = product.category_id
+            visited = set()
+            while True:
+                node = category_nodes.get(top_level_id)
+                if not node:
+                    break
+                parent_id = node["parent_id"]
+                if not parent_id or parent_id in visited:
+                    break
+                visited.add(top_level_id)
+                top_level_id = parent_id
+
+            top_level_name = category_nodes.get(top_level_id, {}).get(
+                "name",
+                product.category.name,
+            )
+            bucket_key = f"category-{top_level_id}"
+        else:
+            top_level_name = "Uncategorized"
+            bucket_key = "uncategorized"
+
+        bucket = finance_category_map.setdefault(
+            bucket_key,
+            {
+                "category_name": top_level_name,
+                "product_count": 0,
+                "category_total_cost": 0,
+            },
+        )
+        bucket["product_count"] += 1
+        bucket["category_total_cost"] += line_total
+
+    finance_category_breakdown = sorted(
+        [row for key, row in finance_category_map.items() if key != "uncategorized"],
+        key=lambda row: row["category_name"].lower(),
+    )
+    uncategorized_row = finance_category_map.get("uncategorized")
+    if uncategorized_row:
+        finance_category_breakdown.append(uncategorized_row)
+
+    finance_chart_labels = []
+    finance_chart_values = []
+    for row in finance_category_breakdown:
+        total_value = float(row["category_total_cost"])
+        if total_value > 0:
+            finance_chart_labels.append(row["category_name"])
+            finance_chart_values.append(total_value)
+    finance_chart_labels.append("Expenses")
+    finance_chart_values.append(float(expenses_total))
+
+    net_inventory_value = grand_total - expenses_total
 
     category_breakdown = Category.objects.annotate(product_count=Count('product')).order_by('name')
 
@@ -50,7 +117,7 @@ def dashboard(request):
         'total_products': len(all_products),
         'low_stock_count': len(low_stock_products),
         'total_categories': Category.objects.count(),
-        'inventory_value': '—',
+        'inventory_value': f"${grand_total:,.2f}",
         'recent_products': filtered_products[:8],
         'critical_products': critical_products[:5],
         'category_breakdown': category_breakdown,
@@ -59,6 +126,12 @@ def dashboard(request):
         'selected_status': status_filter,
         'selected_category': category_filter,
         'activity_items': all_products[:5],
+        'finance_category_breakdown': finance_category_breakdown,
+        'grand_total': grand_total,
+        'expenses_total': expenses_total,
+        'net_inventory_value': net_inventory_value,
+        'finance_chart_labels': finance_chart_labels,
+        'finance_chart_values': finance_chart_values,
     }
 
     return render(request, 'inventory/dashboard.html', context)
@@ -312,8 +385,17 @@ def adjust_quantity(request, pk):
 @login_required
 def finances(request):
     """Display the total retail value of all inventory stock."""
+    if request.method == "POST":
+        expense_form = ExpenseForm(request.POST)
+        if expense_form.is_valid():
+            expense_form.save()
+            messages.success(request, "Expense added.")
+            return redirect("finances")
+    else:
+        expense_form = ExpenseForm()
 
     products = Product.objects.select_related("category").all().order_by("name")
+    expenses = list(Expense.objects.all())
 
     product_data = []
     grand_total = 0
@@ -332,9 +414,16 @@ def finances(request):
             }
         )
 
+    expenses_total = sum((expense.amount for expense in expenses), Decimal("0.00"))
+    net_inventory_value = grand_total - expenses_total
+
     context = {
         "product_data": product_data,
         "grand_total": grand_total,
+        "expenses": expenses,
+        "expenses_total": expenses_total,
+        "net_inventory_value": net_inventory_value,
+        "expense_form": expense_form,
     }
     return render(request, "inventory/finances.html", context)
 

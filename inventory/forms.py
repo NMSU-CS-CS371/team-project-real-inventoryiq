@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Category, Product
+from .models import Category, Product, Expense
 
 
 class ProductForm(forms.ModelForm):
@@ -52,4 +52,19 @@ class CategoryForm(forms.ModelForm):
                 attrs={"class": "form-control", "placeholder": "Category name"}
             ),
             "parent": forms.Select(attrs={"class": "form-select"}),
+        }
+
+
+class ExpenseForm(forms.ModelForm):
+    """Simple form for adding expenses from the finance page."""
+
+    class Meta:
+        model = Expense
+        fields = ["amount", "date", "note"]
+        widgets = {
+            "amount": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0", "placeholder": "0.00"}
+            ),
+            "date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "note": forms.TextInput(attrs={"class": "form-control", "placeholder": "Optional note"}),
         }

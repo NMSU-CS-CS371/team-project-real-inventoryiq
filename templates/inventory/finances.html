@@ -2,16 +2,117 @@
 {% block title %}Finances — InventoryIQ{% endblock %}
 
 {% block content %}
+<style>
+    .finance-metric-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius-lg);
+    }
+
+    .finance-metric-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: #94a3b8;
+    }
+
+    .finance-metric-card.metric-inventory::before { background: #10b981; }
+    .finance-metric-card.metric-expenses::before { background: #ef4444; }
+    .finance-metric-card.metric-net::before { background: #0f172a; }
+
+    .finance-metric-value {
+        font-family: 'DM Mono', monospace;
+        font-size: 2.2rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+
+    .metric-inventory .finance-metric-value { color: #059669; }
+    .metric-expenses .finance-metric-value { color: #dc2626; }
+    .metric-net .finance-metric-value { color: #0f172a; }
+
+    .expense-history-card {
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+
+    .expense-history-card thead th {
+        background: var(--surface-2);
+    }
+</style>
 <h2 class="mb-4">Finances</h2>
 
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-4">
-        <div class="card text-center p-3">
-            <div class="fs-1 fw-bold" style="font-family: 'DM Mono', monospace;">${{ grand_total|floatformat:2 }}</div>
-            <div class="text-muted">Total Stock Value</div>
+    <div class="col-12 col-md-4">
+        <div class="card finance-metric-card metric-inventory text-center p-3">
+            <div class="finance-metric-value">${{ grand_total|floatformat:2 }}</div>
+            <div class="text-muted">Inventory Total</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card finance-metric-card metric-expenses text-center p-3">
+            <div class="finance-metric-value">-${{ expenses_total|floatformat:2 }}</div>
+            <div class="text-muted">Total Expenses</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card finance-metric-card metric-net text-center p-3">
+            <div class="finance-metric-value">${{ net_inventory_value|floatformat:2 }}</div>
+            <div class="text-muted">Net Inventory Value</div>
         </div>
     </div>
 </div>
+
+<div class="card p-3 mb-4">
+    <h4 class="mb-3">Add Expense</h4>
+    <form method="post" class="row g-3 align-items-end">
+        {% csrf_token %}
+        <div class="col-12 col-md-3">
+            <label class="form-label mb-1">Amount</label>
+            {{ expense_form.amount }}
+        </div>
+        <div class="col-12 col-md-3">
+            <label class="form-label mb-1">Date</label>
+            {{ expense_form.date }}
+        </div>
+        <div class="col-12 col-md-4">
+            <label class="form-label mb-1">Note</label>
+            {{ expense_form.note }}
+        </div>
+        <div class="col-12 col-md-2 d-grid">
+            <button type="submit" class="btn btn-dark">Add Expense</button>
+        </div>
+    </form>
+</div>
+
+<h4 class="mb-3">Expense History</h4>
+{% if expenses %}
+<div class="card expense-history-card mb-4">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Note</th>
+                    <th class="text-end">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expense in expenses %}
+                <tr>
+                    <td>{{ expense.date|date:"M d, Y" }}</td>
+                    <td class="text-muted">{{ expense.note|default:"—" }}</td>
+                    <td class="text-end fw-semibold">-${{ expense.amount|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<p class="text-muted mb-4">No expenses yet.</p>
+{% endif %}
 
 <h4 class="mb-3">Per-Product Breakdown</h4>
 
