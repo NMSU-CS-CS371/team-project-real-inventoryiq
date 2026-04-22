@@ -175,25 +175,55 @@
         color: #fff !important;
     }
 
-    .finance-panel-link {
-        display: block;
-        text-decoration: none;
-        color: inherit;
+    .finance-tabs {
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        gap: 0.45rem;
     }
 
-    .finance-panel-link:hover {
-        color: inherit;
+    .finance-tabs .nav-link {
+        color: #94a3b8;
+        background: transparent;
+        border: 1px solid transparent;
+        border-bottom: none;
+        border-radius: 12px 12px 0 0;
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        font-weight: 600;
+        padding: 0.6rem 0.95rem;
     }
 
-    .finance-panel-link .dash-card {
-        transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-        cursor: pointer;
+    .finance-tabs .nav-link:hover,
+    .finance-tabs .nav-link:focus {
+        color: #e2e8f0;
+        border-color: rgba(255,255,255,0.1);
     }
 
-    .finance-panel-link:hover .dash-card {
-        border-color: rgba(52, 211, 153, 0.55);
-        transform: translateY(-2px);
-        box-shadow: 0 10px 24px rgba(16, 185, 129, 0.12);
+    .finance-tabs .nav-link.active {
+        color: #ffffff;
+        background: #171717;
+        border-color: rgba(255,255,255,0.12);
+        border-bottom-color: #171717;
+    }
+
+    .finance-tab-pane {
+        padding-top: 0.25rem;
+    }
+
+    .finance-summary-value {
+        font-family: "DM Mono", monospace;
+        font-size: 1.4rem;
+        font-weight: 600;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .finance-summary-value.expense {
+        color: #f87171;
+    }
+
+    .finance-summary-value.profit {
+        color: #34d399;
     }
 
     .finance-chart-shell {
@@ -203,6 +233,10 @@
         border-radius: 16px;
         padding: 1.25rem;
         position: relative;
+    }
+
+    .finance-chart-shell--position {
+        background: radial-gradient(circle at 78% 16%, rgba(59, 130, 246, 0.18), rgba(16, 16, 16, 0.88) 62%);
     }
 
     .finance-chart-no-data {
@@ -291,67 +325,173 @@
             <div class="row g-4">
                 <!-- FINANCIAL -->
                 <div class="col-xl-8">
-                    <a href="{% url 'finances' %}" class="finance-panel-link">
-                        <div class="dash-card h-100">
-                            <h2 class="dash-title mb-4 fs-3">Financial Overview</h2>
+                    <div class="dash-card h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                            <h2 class="dash-title mb-0 fs-3">Financial Overview</h2>
+                            <a href="{% url 'finances' %}" class="btn btn-dark-soft btn-sm px-3">Open Full Finances</a>
+                        </div>
 
-                            <div class="finance-chart-shell mb-4">
-                                <canvas id="financePieChart"></canvas>
-                                {% if not finance_chart_values %}
-                                <div class="finance-chart-no-data">No stock value data to visualize yet.</div>
-                                {% endif %}
-                            </div>
+                        <ul class="nav nav-tabs finance-tabs mb-4" id="financeOverviewTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button
+                                    class="nav-link active"
+                                    id="inventory-total-tab"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#inventory-total-pane"
+                                    type="button"
+                                    role="tab"
+                                    aria-controls="inventory-total-pane"
+                                    aria-selected="true"
+                                >
+                                    Inventory Total
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button
+                                    class="nav-link"
+                                    id="finance-position-tab"
+                                    data-bs-toggle="tab"
+                                    data-bs-target="#finance-position-pane"
+                                    type="button"
+                                    role="tab"
+                                    aria-controls="finance-position-pane"
+                                    aria-selected="false"
+                                >
+                                    Finance Position
+                                </button>
+                            </li>
+                        </ul>
 
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-6">
-                                    <div class="dash-card-soft p-3 h-100">
-                                        <div class="small dash-muted">Inventory Total</div>
-                                        <div class="fs-3 text-white mt-1">${{ grand_total|floatformat:2 }}</div>
-                                    </div>
+                        <div class="tab-content">
+                            <div
+                                class="tab-pane fade show active finance-tab-pane"
+                                id="inventory-total-pane"
+                                role="tabpanel"
+                                aria-labelledby="inventory-total-tab"
+                                tabindex="0"
+                            >
+                                <div class="finance-chart-shell mb-4">
+                                    <canvas id="inventoryTotalChart"></canvas>
+                                    {% if not inventory_chart_values %}
+                                    <div class="finance-chart-no-data">No inventory category totals to visualize yet.</div>
+                                    {% endif %}
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="dash-card-soft p-3 h-100">
-                                        <div class="small dash-muted">Expenses</div>
-                                        <div class="fs-3 text-white mt-1">
-                                            {% if expenses_total > 0 %}-${{ expenses_total|floatformat:2 }}{% else %}$0.00{% endif %}
+
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-6">
+                                        <div class="dash-card-soft p-3 h-100">
+                                            <div class="small dash-muted">Inventory Total</div>
+                                            <div class="finance-summary-value text-white mt-2">${{ grand_total|floatformat:2 }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="dash-card-soft p-3 h-100">
+                                            <div class="small dash-muted">Categories Included</div>
+                                            <div class="finance-summary-value text-white mt-2">{{ finance_category_breakdown|length }}</div>
                                         </div>
                                     </div>
                                 </div>
+
+                                <h3 class="dash-title fs-5 mb-3">Per-Category Cost Breakdown</h3>
+                                <div class="table-responsive dash-card-soft">
+                                    <table class="table table-dark-custom align-middle">
+                                        <thead>
+                                            <tr class="dash-muted">
+                                                <th class="px-4 py-3">Category</th>
+                                                <th class="px-4 py-3 text-end">Products</th>
+                                                <th class="px-4 py-3 text-end">Cost</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in finance_category_breakdown %}
+                                            <tr>
+                                                <td class="px-4 py-3 fw-semibold">{{ item.category_name }}</td>
+                                                <td class="px-4 py-3 text-end">{{ item.product_count }}</td>
+                                                <td class="px-4 py-3 text-end fw-semibold">${{ item.category_total_cost|floatformat:2 }}</td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="3" class="px-4 py-4 dash-muted">No category data available.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="2" class="px-4 py-3 text-end fw-bold">Grand Total</td>
+                                                <td class="px-4 py-3 text-end fw-bold">${{ grand_total|floatformat:2 }}</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </div>
 
-                            <h3 class="dash-title fs-5 mb-3">Per-Category Cost Breakdown</h3>
-                            <div class="table-responsive dash-card-soft">
-                                <table class="table table-dark-custom align-middle">
-                                    <thead>
-                                        <tr class="dash-muted">
-                                            <th class="px-4 py-3">Category</th>
-                                            <th class="px-4 py-3 text-end">Products</th>
-                                            <th class="px-4 py-3 text-end">Cost</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for item in finance_category_breakdown %}
-                                        <tr>
-                                            <td class="px-4 py-3 fw-semibold">{{ item.category_name }}</td>
-                                            <td class="px-4 py-3 text-end">{{ item.product_count }}</td>
-                                            <td class="px-4 py-3 text-end fw-semibold">${{ item.category_total_cost|floatformat:2 }}</td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="3" class="px-4 py-4 dash-muted">No category data available.</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="2" class="px-4 py-3 text-end fw-bold">Grand Total</td>
-                                            <td class="px-4 py-3 text-end fw-bold">${{ grand_total|floatformat:2 }}</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                            <div
+                                class="tab-pane fade finance-tab-pane"
+                                id="finance-position-pane"
+                                role="tabpanel"
+                                aria-labelledby="finance-position-tab"
+                                tabindex="0"
+                            >
+                                <div class="finance-chart-shell finance-chart-shell--position mb-4">
+                                    <canvas id="financePositionChart"></canvas>
+                                    <div id="finance-position-no-data" class="finance-chart-no-data d-none">
+                                        No finance position data to visualize yet.
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-4">
+                                        <div class="dash-card-soft p-3 h-100">
+                                            <div class="small dash-muted">Total Expenses</div>
+                                            <div class="finance-summary-value expense mt-2">
+                                                {% if expenses_total > 0 %}-${{ expenses_total|floatformat:2 }}{% else %}$0.00{% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="dash-card-soft p-3 h-100">
+                                            <div class="small dash-muted">Inventory Sell Value</div>
+                                            <div class="finance-summary-value text-white mt-2">${{ grand_total|floatformat:2 }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="dash-card-soft p-3 h-100">
+                                            <div class="small dash-muted">Net Inventory Value</div>
+                                            <div class="finance-summary-value profit mt-2">${{ net_inventory_value|floatformat:2 }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h3 class="dash-title fs-5 mb-3">Per-Category Finance Position</h3>
+                                <div class="table-responsive dash-card-soft">
+                                    <table class="table table-dark-custom align-middle">
+                                        <thead>
+                                            <tr class="dash-muted">
+                                                <th class="px-4 py-3">Category</th>
+                                                <th class="px-4 py-3 text-end">Total Value</th>
+                                                <th class="px-4 py-3 text-end">Profit</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in finance_position_breakdown %}
+                                            <tr>
+                                                <td class="px-4 py-3 fw-semibold">{{ item.category_name }}</td>
+                                                <td class="px-4 py-3 text-end fw-semibold">${{ item.category_total_sell|floatformat:2 }}</td>
+                                                <td class="px-4 py-3 text-end fw-semibold {% if item.category_total_profit < 0 %}text-danger{% else %}text-success{% endif %}">
+                                                    ${{ item.category_total_profit|floatformat:2 }}
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="3" class="px-4 py-4 dash-muted">No finance position category data available.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-                    </a>
+                    </div>
                 </div>
 
                 <!-- RIGHT STACK -->
@@ -501,218 +641,265 @@
         </div>
     </div>
 </div>
-{{ finance_chart_labels|json_script:"finance-chart-labels" }}
-{{ finance_chart_values|json_script:"finance-chart-values" }}
-{{ net_inventory_value|json_script:"finance-net-value" }}
+{{ inventory_chart_labels|json_script:"inventory-chart-labels" }}
+{{ inventory_chart_values|json_script:"inventory-chart-values" }}
+{{ grand_total|json_script:"inventory-grand-total" }}
+{{ finance_position_labels|json_script:"finance-position-labels" }}
+{{ finance_position_expense_values|json_script:"finance-position-expense-values" }}
+{{ finance_position_buy_values|json_script:"finance-position-buy-values" }}
+{{ finance_position_sell_values|json_script:"finance-position-sell-values" }}
+{{ finance_position_profit_values|json_script:"finance-position-profit-values" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
     (function () {
-        const labelsEl = document.getElementById("finance-chart-labels");
-        const valuesEl = document.getElementById("finance-chart-values");
-        const netValueEl = document.getElementById("finance-net-value");
-        const canvas = document.getElementById("financePieChart");
-        if (!labelsEl || !valuesEl || !netValueEl || !canvas || typeof Chart === "undefined") {
+        if (typeof Chart === "undefined") {
             return;
         }
 
-        const labels = JSON.parse(labelsEl.textContent || "[]");
-        const values = JSON.parse(valuesEl.textContent || "[]").map(Number);
-        const netValue = Number(JSON.parse(netValueEl.textContent || "0"));
-        const expenseLabel = "Expenses";
-        const inventoryLegendLabel = "Inventory Total";
-        if (!values.some((value) => value > 0)) {
-            return;
-        }
-
-        const inventoryLegendColor = "#10b981";
-        const expenseLegendColor = "#ef4444";
-
-        const sliceColors = labels.map(function (label, index) {
-            if (label === expenseLabel) {
-                return expenseLegendColor;
+        const parseJsonScript = function (id, fallback) {
+            const node = document.getElementById(id);
+            if (!node) {
+                return fallback;
             }
-            return inventoryLegendColor;
+            try {
+                return JSON.parse(node.textContent || "null");
+            } catch (error) {
+                return fallback;
+            }
+        };
+
+        const formatCurrency = function (value) {
+            return "$" + Number(value || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        };
+
+        const inventoryLabels = parseJsonScript("inventory-chart-labels", []);
+        const inventoryValues = parseJsonScript("inventory-chart-values", []).map(Number);
+        const inventoryGrandTotal = Number(parseJsonScript("inventory-grand-total", 0));
+        const inventoryCanvas = document.getElementById("inventoryTotalChart");
+
+        let inventoryChart = null;
+        if (inventoryCanvas && inventoryValues.some((value) => value > 0)) {
+            const inventoryPalette = [
+                "#10b981",
+                "#14b8a6",
+                "#22c55e",
+                "#0ea5e9",
+                "#3b82f6",
+                "#f59e0b",
+                "#ec4899",
+                "#8b5cf6"
+            ];
+
+            const centerInventoryPlugin = {
+                id: "centerInventoryPlugin",
+                afterDraw: function (chart) {
+                    const ctx = chart.ctx;
+                    const x = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
+                    const y = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
+
+                    ctx.save();
+                    ctx.textAlign = "center";
+                    ctx.fillStyle = "#94a3b8";
+                    ctx.font = "500 12px Sora";
+                    ctx.fillText("Inventory Total", x, y - 10);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "700 15px Sora";
+                    ctx.fillText(formatCurrency(inventoryGrandTotal), x, y + 13);
+                    ctx.restore();
+                }
+            };
+
+            inventoryChart = new Chart(inventoryCanvas, {
+                type: "doughnut",
+                plugins: [centerInventoryPlugin],
+                data: {
+                    labels: inventoryLabels,
+                    datasets: [{
+                        data: inventoryValues,
+                        backgroundColor: inventoryLabels.map(function (_, index) {
+                            return inventoryPalette[index % inventoryPalette.length];
+                        }),
+                        borderColor: "#0d0d0d",
+                        borderWidth: 2,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: "56%",
+                    animation: {
+                        duration: 900,
+                        easing: "easeOutCubic"
+                    },
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                color: "#ffffff",
+                                padding: 14,
+                                usePointStyle: true,
+                                pointStyle: "circle",
+                                boxWidth: 8,
+                                font: {
+                                    family: "Sora"
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: "rgba(15, 23, 42, 0.96)",
+                            borderColor: "rgba(255,255,255,0.12)",
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function (context) {
+                                    const value = Number(context.raw || 0);
+                                    const total = inventoryValues.reduce(function (sum, current) {
+                                        return sum + Number(current || 0);
+                                    }, 0);
+                                    const percent = total ? ((value / total) * 100).toFixed(1) : "0.0";
+                                    return context.label + ": " + formatCurrency(value) + " (" + percent + "%)";
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const financePositionLabels = parseJsonScript("finance-position-labels", []);
+        const financePositionExpenseValues = parseJsonScript("finance-position-expense-values", []).map(Number);
+        const financePositionBuyValues = parseJsonScript("finance-position-buy-values", []).map(Number);
+        const financePositionSellValues = parseJsonScript("finance-position-sell-values", []).map(Number);
+        const financePositionProfitValues = parseJsonScript("finance-position-profit-values", []).map(Number);
+        const financePositionCanvas = document.getElementById("financePositionChart");
+        const financePositionNoDataEl = document.getElementById("finance-position-no-data");
+
+        let financePositionChart = null;
+        const hasFinancePositionData = financePositionLabels.some(function (_, index) {
+            return (
+                Math.abs(financePositionExpenseValues[index] || 0) > 0 ||
+                Math.abs(financePositionBuyValues[index] || 0) > 0 ||
+                Math.abs(financePositionSellValues[index] || 0) > 0 ||
+                Math.abs(financePositionProfitValues[index] || 0) > 0
+            );
         });
 
-        const total = values.reduce((sum, value) => sum + value, 0);
+        if (financePositionCanvas && hasFinancePositionData) {
+            if (financePositionNoDataEl) {
+                financePositionNoDataEl.classList.add("d-none");
+            }
 
-        const categoryPercentPlugin = {
-            id: "categoryPercentPlugin",
-            afterDatasetsDraw: function (chart) {
-                if (!total) {
-                    return;
-                }
-
-                const dataset = chart.data.datasets[0];
-                const meta = chart.getDatasetMeta(0);
-                const ctx = chart.ctx;
-
-                ctx.save();
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.font = "600 12px Sora";
-
-                dataset.data.forEach(function (rawValue, index) {
-                    const value = Number(rawValue || 0);
-                    if (!value) {
-                        return;
-                    }
-
-                    const percent = (value / total) * 100;
-                    if (percent < 4) {
-                        return;
-                    }
-
-                    const arc = meta.data[index];
-                    if (!arc) {
-                        return;
-                    }
-
-                    const angle = (arc.startAngle + arc.endAngle) / 2;
-                    const radius = arc.innerRadius + (arc.outerRadius - arc.innerRadius) * 0.62;
-                    const x = arc.x + Math.cos(angle) * radius;
-                    const y = arc.y + Math.sin(angle) * radius;
-
-                    ctx.fillStyle = "#f8fafc";
-                    ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
-                    ctx.shadowBlur = 6;
-                    const label = labels[index] || "";
-                    const prefix = label === expenseLabel ? "-" : "";
-                    ctx.fillText(prefix + percent.toFixed(0) + "%", x, y);
-                });
-
-                ctx.restore();
-            },
-        };
-
-        const centerTotalPlugin = {
-            id: "centerTotalPlugin",
-            afterDraw: function (chart) {
-                if (!total) {
-                    return;
-                }
-
-                const ctx = chart.ctx;
-                const x = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
-                const y = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
-
-                ctx.save();
-                ctx.textAlign = "center";
-                ctx.fillStyle = "#94a3b8";
-                ctx.font = "500 12px Sora";
-                ctx.fillText("Net Inventory Value", x, y - 10);
-
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "700 15px Sora";
-                ctx.fillText(
-                    "$" + netValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                    x,
-                    y + 13
-                );
-                ctx.restore();
-            },
-        };
-
-        new Chart(canvas, {
-            type: "doughnut",
-            plugins: [categoryPercentPlugin, centerTotalPlugin],
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: values,
-                    backgroundColor: sliceColors,
-                    borderColor: "#0d0d0d",
-                    borderWidth: 2,
-                    hoverOffset: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: "56%",
-                animation: {
-                    duration: 900,
-                    easing: "easeOutCubic"
-                },
-                plugins: {
-                    legend: {
-                        position: "bottom",
-                        onClick: function (event, legendItem, legend) {
-                            if (legendItem && legendItem.index === null) {
-                                return;
-                            }
-                            Chart.defaults.plugins.legend.onClick(event, legendItem, legend);
+            financePositionChart = new Chart(financePositionCanvas, {
+                type: "bar",
+                data: {
+                    labels: financePositionLabels,
+                    datasets: [
+                        {
+                            label: "Expenses",
+                            data: financePositionExpenseValues,
+                            backgroundColor: "#ef4444",
+                            borderRadius: 6
                         },
-                        labels: {
-                            color: "#ffffff",
-                            padding: 14,
-                            usePointStyle: true,
-                            pointStyle: "circle",
-                            boxWidth: 8,
-                            font: {
-                                family: "Sora"
+                        {
+                            label: "Buy Price",
+                            data: financePositionBuyValues,
+                            backgroundColor: "#3b82f6",
+                            borderRadius: 6
+                        },
+                        {
+                            label: "Sell Price",
+                            data: financePositionSellValues,
+                            backgroundColor: "#f59e0b",
+                            borderRadius: 6
+                        },
+                        {
+                            label: "Profit",
+                            data: financePositionProfitValues,
+                            backgroundColor: "#10b981",
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: false,
+                            ticks: {
+                                color: "#cbd5e1",
+                                font: {
+                                    family: "Sora"
+                                },
+                                maxRotation: 32,
+                                minRotation: 0
                             },
-                            generateLabels: function (chart) {
-                                return [
-                                    {
-                                    text: inventoryLegendLabel,
-                                    fillStyle: inventoryLegendColor,
-                                    strokeStyle: inventoryLegendColor,
-                                    fontColor: "#ffffff",
-                                    hidden: false,
-                                    lineCap: "round",
-                                    lineDash: [],
-                                    lineDashOffset: 0,
-                                    lineJoin: "round",
-                                    lineWidth: 0,
-                                    pointStyle: "circle",
-                                    rotation: 0,
-                                    index: null,
-                                    datasetIndex: 0
-                                    },
-                                    {
-                                        text: "Expenses",
-                                        fillStyle: expenseLegendColor,
-                                        strokeStyle: expenseLegendColor,
-                                        fontColor: "#ffffff",
-                                        hidden: false,
-                                        lineCap: "round",
-                                        lineDash: [],
-                                        lineDashOffset: 0,
-                                        lineJoin: "round",
-                                        lineWidth: 0,
-                                        pointStyle: "circle",
-                                        rotation: 0,
-                                        index: null,
-                                        datasetIndex: 0
-                                    }
-                                ];
+                            grid: {
+                                color: "rgba(255,255,255,0.04)"
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: "#cbd5e1",
+                                callback: function (value) {
+                                    return formatCurrency(value);
+                                }
                             },
+                            grid: {
+                                color: "rgba(255,255,255,0.08)"
+                            }
                         }
                     },
-                    tooltip: {
-                        backgroundColor: "rgba(15, 23, 42, 0.96)",
-                        borderColor: "rgba(255,255,255,0.12)",
-                        borderWidth: 1,
-                        callbacks: {
-                            label: function (context) {
-                                const amount = Number(context.raw || 0).toLocaleString(undefined, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2
-                                });
-                                const percent = total ? ((Number(context.raw || 0) / total) * 100).toFixed(1) : "0.0";
-                                if (context.label === expenseLabel) {
-                                    return context.label + ": -$" + amount + " (-" + percent + "%)";
+                    plugins: {
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                color: "#ffffff",
+                                usePointStyle: true,
+                                pointStyle: "circle",
+                                padding: 14,
+                                font: {
+                                    family: "Sora"
                                 }
-                                const safeLabel = (context.label && context.label !== "undefined")
-                                    ? context.label
-                                    : inventoryLegendLabel;
-                                return safeLabel + ": $" + amount + " (" + percent + "%)";
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: "rgba(15, 23, 42, 0.96)",
+                            borderColor: "rgba(255,255,255,0.12)",
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function (context) {
+                                    const value = Number(context.raw || 0);
+                                    if (context.dataset.label === "Expenses") {
+                                        return context.dataset.label + ": -" + formatCurrency(value);
+                                    }
+                                    return context.dataset.label + ": " + formatCurrency(value);
+                                }
                             }
                         }
                     }
                 }
-            }
+            });
+        } else if (financePositionNoDataEl) {
+            financePositionNoDataEl.classList.remove("d-none");
+        }
+
+        const financeTabs = document.querySelectorAll('#financeOverviewTabs button[data-bs-toggle="tab"]');
+        financeTabs.forEach(function (tabButton) {
+            tabButton.addEventListener("shown.bs.tab", function () {
+                if (inventoryChart) {
+                    inventoryChart.resize();
+                    inventoryChart.update("none");
+                }
+                if (financePositionChart) {
+                    financePositionChart.resize();
+                    financePositionChart.update("none");
+                }
+            });
         });
     })();
 </script>

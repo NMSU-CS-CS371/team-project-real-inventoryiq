@@ -51,12 +51,15 @@ def dashboard(request):
     finance_category_map = {}
     expenses = list(Expense.objects.all())
     expenses_total = sum((expense.amount for expense in expenses), Decimal("0.00"))
-    grand_total = 0
+    grand_total = Decimal("0.00")
 
     for product in all_products:
-        retail = product.retail_value or 0
-        line_total = retail * product.quantity
-        grand_total += line_total
+        retail = product.retail_value or Decimal("0.00")
+        cost = product.cost_value or Decimal("0.00")
+        line_total_sell = retail * product.quantity
+        line_total_buy = cost * product.quantity
+        line_total_profit = line_total_sell - line_total_buy
+        grand_total += line_total_sell
 
         if product.category_id:
             top_level_id = product.category_id
@@ -85,11 +88,18 @@ def dashboard(request):
             {
                 "category_name": top_level_name,
                 "product_count": 0,
-                "category_total_cost": 0,
+                "category_total_cost": Decimal("0.00"),
+                "category_total_buy": Decimal("0.00"),
+                "category_total_sell": Decimal("0.00"),
+                "category_total_profit": Decimal("0.00"),
             },
         )
         bucket["product_count"] += 1
-        bucket["category_total_cost"] += line_total
+        # Keep this existing key as the inventory total used in the dashboard table/chart.
+        bucket["category_total_cost"] += line_total_sell
+        bucket["category_total_buy"] += line_total_buy
+        bucket["category_total_sell"] += line_total_sell
+        bucket["category_total_profit"] += line_total_profit
 
     finance_category_breakdown = sorted(
         [row for key, row in finance_category_map.items() if key != "uncategorized"],
@@ -99,15 +109,37 @@ def dashboard(request):
     if uncategorized_row:
         finance_category_breakdown.append(uncategorized_row)
 
-    finance_chart_labels = []
-    finance_chart_values = []
+    inventory_chart_labels = []
+    inventory_chart_values = []
     for row in finance_category_breakdown:
         total_value = float(row["category_total_cost"])
         if total_value > 0:
-            finance_chart_labels.append(row["category_name"])
-            finance_chart_values.append(total_value)
+            inventory_chart_labels.append(row["category_name"])
+            inventory_chart_values.append(total_value)
+
+    # Keep these existing keys for compatibility.
+    finance_chart_labels = list(inventory_chart_labels)
+    finance_chart_values = list(inventory_chart_values)
     finance_chart_labels.append("Expenses")
     finance_chart_values.append(float(expenses_total))
+
+    finance_position_labels = ["Total Expenses"]
+    finance_position_expense_values = [float(expenses_total)]
+    finance_position_buy_values = [0.0]
+    finance_position_sell_values = [0.0]
+    finance_position_profit_values = [0.0]
+
+    for row in finance_category_breakdown:
+        finance_position_labels.append(row["category_name"])
+        finance_position_expense_values.append(0.0)
+        finance_position_buy_values.append(float(row["category_total_buy"]))
+        finance_position_sell_values.append(float(row["category_total_sell"]))
+        finance_position_profit_values.append(float(row["category_total_profit"]))
+
+    finance_position_breakdown = sorted(
+        finance_category_breakdown,
+        key=lambda row: (-row["category_total_sell"], row["category_name"].lower()),
+    )
 
     net_inventory_value = grand_total - expenses_total
 
@@ -132,6 +164,14 @@ def dashboard(request):
         'net_inventory_value': net_inventory_value,
         'finance_chart_labels': finance_chart_labels,
         'finance_chart_values': finance_chart_values,
+        'inventory_chart_labels': inventory_chart_labels,
+        'inventory_chart_values': inventory_chart_values,
+        'finance_position_labels': finance_position_labels,
+        'finance_position_expense_values': finance_position_expense_values,
+        'finance_position_buy_values': finance_position_buy_values,
+        'finance_position_sell_values': finance_position_sell_values,
+        'finance_position_profit_values': finance_position_profit_values,
+        'finance_position_breakdown': finance_position_breakdown,
     }
 
     return render(request, 'inventory/dashboard.html', context)
