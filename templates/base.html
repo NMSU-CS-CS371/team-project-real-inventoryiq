@@ -9,20 +9,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg:          #f5f4f0;
-            --surface:     #ffffff;
-            --surface-2:   #f0efe9;
-            --ink:         #16150f;
-            --ink-muted:   #7a7870;
-            --accent:      #1a1a1a;
-            --accent-alt:  #d94f3d;
-            --border:      #e2e0d8;
+            --bg:          #0a0a0a;
+            --surface:     #111111;
+            --surface-2:   #171717;
+            --ink:         #f5f4f0;
+            --ink-muted:   #94a3b8;
+            --accent:      #10b981;
+            --accent-alt:  #ef4444;
+            --border:      rgba(255,255,255,0.08);
             --nav-bg:      #16150f;
             --nav-ink:     #f5f4f0;
             --radius:      10px;
             --radius-lg:   16px;
-            --shadow-sm:   0 1px 3px rgba(22,21,15,.06), 0 1px 2px rgba(22,21,15,.04);
-            --shadow-md:   0 4px 16px rgba(22,21,15,.08), 0 1px 4px rgba(22,21,15,.04);
+            --shadow-sm:   0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+            --shadow-md:   0 4px 16px rgba(0,0,0,.5), 0 1px 4px rgba(0,0,0,.3);
         }
 
         *, *::before, *::after { box-sizing: border-box; }
@@ -124,10 +124,10 @@
             border-left: 3px solid currentColor;
         }
 
-        .alert-success { background: #eef8f1; color: #1d6438; }
-        .alert-danger  { background: #fdf0ee; color: #a0341f; }
-        .alert-warning { background: #fdf8ed; color: #8a6014; }
-        .alert-info    { background: #eef4fd; color: #1d4f8a; }
+        .alert-success { background: rgba(16,185,129,0.12); color: #6ee7b7; border-left-color: #10b981; }
+        .alert-danger  { background: rgba(239,68,68,0.12);   color: #fca5a5; border-left-color: #ef4444; }
+        .alert-warning { background: rgba(245,158,11,0.12);  color: #fcd34d; border-left-color: #f59e0b; }
+        .alert-info    { background: rgba(59,130,246,0.12);  color: #93c5fd; border-left-color: #3b82f6; }
 
         /* ── Cards ── */
         .card {
@@ -166,14 +166,16 @@
         .btn-lg { font-size: .9rem; padding: .65rem 1.25rem; }
 
         .btn-dark {
-            background: var(--ink);
-            border-color: var(--ink);
-            color: var(--nav-ink);
+            background: rgba(16, 185, 129, 0.9);
+            border-color: transparent;
+            color: #000;
+            font-weight: 600;
         }
 
         .btn-dark:hover {
-            background: #2e2d26;
-            border-color: #2e2d26;
+            background: rgba(52, 211, 153, 1);
+            border-color: transparent;
+            color: #000;
         }
 
         .btn-danger {
@@ -182,14 +184,15 @@
         }
 
         .btn-outline-secondary {
-            color: var(--ink-muted);
-            border-color: var(--border);
+            color: #e2e8f0;
+            border-color: rgba(255,255,255,0.12);
+            background: #171717;
         }
 
         .btn-outline-secondary:hover {
-            background: var(--surface-2);
-            border-color: #c8c6bd;
-            color: var(--ink);
+            background: #1d1d1d;
+            border-color: rgba(255,255,255,0.2);
+            color: #fff;
         }
 
         .btn-outline-danger {
@@ -218,10 +221,12 @@
         }
 
         .form-control:focus, .form-select:focus {
-            border-color: var(--ink);
-            box-shadow: 0 0 0 3px rgba(22,21,15,.08);
+            border-color: rgba(16,185,129,0.6);
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
             background: var(--surface);
+            color: var(--ink);
         }
+        .form-control::placeholder { color: var(--ink-muted); opacity: 1; }
 
         .form-label {
             font-size: .8rem;
@@ -250,6 +255,10 @@
         }
 
         .text-muted { color: var(--ink-muted) !important; }
+        .text-dark  { color: var(--ink) !important; }
+
+        /* Dark-theme select option */
+        .form-select option { background: #171717; color: #f5f4f0; }
 
         /* ── Badges ── */
         .badge {

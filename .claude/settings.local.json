@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(pip show:*)",
+      "Bash(django-admin startproject:*)",
+      "Bash(python:*)",
+      "Bash(git fetch *)",
+      "Bash(git show *)",
+      "Read(//tmp/**)"
+    ]
+  }
+}

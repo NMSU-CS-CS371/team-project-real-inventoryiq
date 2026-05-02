@@ -30,10 +30,12 @@
         white-space: nowrap;
     }
 
-    .metric-inventory .finance-metric-value { color: #059669; }
-    .metric-expenses .finance-metric-value { color: #dc2626; }
-    .metric-net .finance-metric-value { color: #0f172a; }
-    .metric-profit .finance-metric-value { color: #2563eb; }
+    .metric-inventory .finance-metric-value { color: #34d399; }
+    .metric-expenses .finance-metric-value  { color: #f87171; }
+    .metric-net .finance-metric-value       { color: #93c5fd; }
+    .metric-profit .finance-metric-value    { color: #60a5fa; }
+
+    .finance-metric-card.metric-net::before { background: #3b82f6; }
 
     .expense-history-card {
         border-radius: var(--radius-lg);
@@ -42,6 +44,32 @@
 
     .expense-history-card thead th {
         background: var(--surface-2);
+    }
+
+    /* Dark table overrides */
+    .table {
+        --bs-table-bg: var(--surface);
+        --bs-table-color: var(--ink);
+        --bs-table-border-color: var(--border);
+        --bs-table-striped-bg: var(--surface-2);
+        --bs-table-hover-bg: #1d1d1d;
+        --bs-table-hover-color: var(--ink);
+    }
+
+    .table thead th {
+        background: var(--surface-2);
+        color: var(--ink-muted);
+        border-bottom-color: var(--border);
+    }
+
+    .table tfoot td {
+        background: var(--surface-2);
+        border-top-color: var(--border);
+    }
+
+    .table > :not(caption) > * > * {
+        background-color: var(--bs-table-bg);
+        color: var(--bs-table-color);
     }
 </style>
 <h2 class="mb-4">Finances</h2>
