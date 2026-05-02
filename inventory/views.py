@@ -8,8 +8,8 @@ from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import CategoryForm, ProductForm, ExpenseForm
-from .models import Category, Product, Expense
+from .forms import CategoryForm, ProductForm, ExpenseForm, PurchaseOrderForm, PurchaseOrderItemFormSet
+from .models import Category, Product, Expense, PurchaseOrder
 from .utils import send_low_stock_email
 
 
@@ -514,3 +514,70 @@ def export_csv(request):
             ]
         )
     return response
+
+
+@login_required
+def purchase_order_list(request):
+    orders = PurchaseOrder.objects.prefetch_related('items').all()
+    return render(request, 'inventory/purchase_order_list.html', {'orders': orders})
+
+
+@login_required
+def purchase_order_create(request):
+    if request.method == 'POST':
+        form = PurchaseOrderForm(request.POST)
+        formset = PurchaseOrderItemFormSet(request.POST)
+        if form.is_valid() and formset.is_valid():
+            order = form.save()
+            formset.instance = order
+            formset.save()
+            messages.success(request, 'Purchase order created.')
+            return redirect('purchase_order_list')
+    else:
+        form = PurchaseOrderForm()
+        formset = PurchaseOrderItemFormSet()
+    return render(request, 'inventory/purchase_order_form.html', {
+        'form': form, 'formset': formset, 'action': 'New'
+    })
+
+
+@login_required
+def purchase_order_edit(request, pk):
+    order = get_object_or_404(PurchaseOrder, pk=pk)
+    if request.method == 'POST':
+        form = PurchaseOrderForm(request.POST, instance=order)
+        formset = PurchaseOrderItemFormSet(request.POST, instance=order)
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            messages.success(request, 'Purchase order updated.')
+            return redirect('purchase_order_list')
+    else:
+        form = PurchaseOrderForm(instance=order)
+        formset = PurchaseOrderItemFormSet(instance=order)
+    return render(request, 'inventory/purchase_order_form.html', {
+        'form': form, 'formset': formset, 'action': 'Edit', 'order': order
+    })
+
+
+@login_required
+def purchase_order_delete(request, pk):
+    order = get_object_or_404(PurchaseOrder, pk=pk)
+    if request.method == 'POST':
+        order.delete()
+        messages.success(request, 'Purchase order deleted.')
+        return redirect('purchase_order_list')
+    return render(request, 'inventory/purchase_order_confirm_delete.html', {'order': order})
+
+
+@login_required
+def purchase_order_receive(request, pk):
+    if request.method == 'POST':
+        order = get_object_or_404(PurchaseOrder, pk=pk, status='pending')
+        for item in order.items.all():
+            item.product.quantity += item.quantity
+            item.product.save()
+        order.status = 'received'
+        order.save()
+        messages.success(request, f'Purchase order {order.order_number} marked as received. Stock updated.')
+    return redirect('purchase_order_list')

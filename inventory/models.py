@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.core.validators import MinValueValidator
 
 
 class Category(models.Model):
@@ -132,3 +133,45 @@ class MonthlyBudget(models.Model):
 
     class Meta:
         ordering = ["-year_month"]
+
+
+class PurchaseOrder(models.Model):
+    SUPPLIER_CHOICES = [
+        ('company_a', 'Company A'),
+        ('company_b', 'Company B'),
+        ('company_c', 'Company C'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('received', 'Received'),
+    ]
+    supplier = models.CharField(max_length=50, choices=SUPPLIER_CHOICES)
+    order_number = models.CharField(max_length=100, unique=True)
+    note = models.TextField(blank=True, default='')
+    delivery_date = models.DateField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.order_number} ({self.get_supplier_display()})"
+
+
+class PurchaseOrderItem(models.Model):
+    purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey('Product', on_delete=models.PROTECT)
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+
+    def __str__(self):
+        return f"{self.product.name} x{self.quantity}"
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(check=models.Q(quantity__gte=1), name='purchaseorderitem_quantity_gte_1'),
+            models.UniqueConstraint(
+                fields=['purchase_order', 'product'],
+                name='unique_product_per_purchase_order'
+            )
+        ]

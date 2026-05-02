@@ -15,6 +15,13 @@ urlpatterns = [
     # Finances
     path('finances/', views.finances, name='finances'),
 
+    # Purchase Orders
+    path('purchase-orders/', views.purchase_order_list, name='purchase_order_list'),
+    path('purchase-orders/new/', views.purchase_order_create, name='purchase_order_create'),
+    path('purchase-orders/<int:pk>/edit/', views.purchase_order_edit, name='purchase_order_edit'),
+    path('purchase-orders/<int:pk>/delete/', views.purchase_order_delete, name='purchase_order_delete'),
+    path('purchase-orders/<int:pk>/receive/', views.purchase_order_receive, name='purchase_order_receive'),
+
     # Category routes
     path('categories/', views.category_list, name='category_list'),
     path('categories/add/', views.category_add, name='category_add'),

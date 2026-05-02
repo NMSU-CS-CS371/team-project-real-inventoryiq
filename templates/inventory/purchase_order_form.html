@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Purchase Order — InventoryIQ{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><a href="{% url 'purchase_order_list' %}" class="text-muted text-decoration-none me-2">←</a>{{ action }} Purchase Order</h2>
+    <div class="d-flex gap-2">
+        <a href="{% url 'purchase_order_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        <button form="po-form" type="submit" class="btn btn-dark">Save</button>
+    </div>
+</div>
+
+<form id="po-form" method="post">
+    {% csrf_token %}
+
+    <!-- Card 1: Order Details -->
+    <div class="card p-4 mb-4">
+        <h5 class="mb-3 fw-semibold">Order Details</h5>
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Supplier</label>
+                {{ form.supplier }}
+                {% if form.supplier.errors %}<div class="text-danger small mt-1">{{ form.supplier.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Order Number</label>
+                {{ form.order_number }}
+                {% if form.order_number.errors %}<div class="text-danger small mt-1">{{ form.order_number.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Note <span class="text-muted fw-normal">(optional)</span></label>
+                {{ form.note }}
+                {% if form.note.errors %}<div class="text-danger small mt-1">{{ form.note.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Delivery Date <span class="text-muted fw-normal">(optional)</span></label>
+                {{ form.delivery_date }}
+                {% if form.delivery_date.errors %}<div class="text-danger small mt-1">{{ form.delivery_date.errors }}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Products Ordered -->
+    <div class="card p-4 mb-4">
+        <h5 class="mb-3 fw-semibold">Products Ordered</h5>
+        {{ formset.management_form }}
+        {% if formset.non_form_errors %}
+        <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+        {% endif %}
+        <div class="table-responsive">
+            <table class="table align-middle" id="formset-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th style="width:120px">Quantity</th>
+                        <th style="width:60px"></th>
+                    </tr>
+                </thead>
+                <tbody id="formset-body">
+                    {% for item_form in formset %}
+                    <tr class="formset-row {% if item_form.instance.pk %}existing-row{% endif %}">
+                        <td>
+                            {{ item_form.product }}
+                            {{ item_form.id }}
+                            {% if item_form.product.errors %}<div class="text-danger small">{{ item_form.product.errors }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ item_form.quantity }}
+                            {% if item_form.quantity.errors %}<div class="text-danger small">{{ item_form.quantity.errors }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {% if item_form.instance.pk %}
+                                {{ item_form.DELETE }}
+                                <label for="{{ item_form.DELETE.id_for_label }}" class="btn btn-sm btn-outline-danger remove-btn" title="Remove">✕</label>
+                            {% else %}
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-btn" onclick="removeRow(this)">✕</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="add-row-btn">+ Add Product</button>
+    </div>
+
+</form>
+
+<!-- Hidden empty formset row template (JS clones this) -->
+<div id="empty-form" style="display:none">
+    <tr class="formset-row">
+        <td>{{ formset.empty_form.product }}{{ formset.empty_form.id }}</td>
+        <td>{{ formset.empty_form.quantity }}</td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger remove-btn" onclick="removeRow(this)">✕</button></td>
+    </tr>
+</div>
+
+<script>
+(function() {
+    const body = document.getElementById('formset-body');
+    const emptyForm = document.getElementById('empty-form');
+    const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+    const addBtn = document.getElementById('add-row-btn');
+
+    addBtn.addEventListener('click', function() {
+        const formCount = parseInt(totalForms.value);
+        const newRow = emptyForm.querySelector('tr').cloneNode(true);
+        // Replace __prefix__ with the current index
+        newRow.innerHTML = newRow.innerHTML.replace(/__prefix__/g, formCount);
+        body.appendChild(newRow);
+        totalForms.value = formCount + 1;
+    });
+
+    window.removeRow = function(btn) {
+        btn.closest('tr').remove();
+        const tf = document.getElementById('id_items-TOTAL_FORMS');
+        tf.value = parseInt(tf.value) - 1;
+    };
+})();
+</script>
+{% endblock %}

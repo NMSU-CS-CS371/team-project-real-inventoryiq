@@ -260,6 +260,26 @@
         /* Dark-theme select option */
         .form-select option { background: #171717; color: #f5f4f0; }
 
+        /* ── Tables ── */
+        .table {
+            color: var(--ink);
+            border-color: var(--border);
+        }
+        .table > :not(caption) > * > * {
+            background-color: transparent;
+            color: var(--ink);
+            border-bottom-color: var(--border);
+        }
+        .table thead th {
+            color: var(--ink-muted);
+            font-size: .75rem;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            border-bottom-color: var(--border);
+        }
+        .table-responsive { border-radius: var(--radius); }
+
         /* ── Badges ── */
         .badge {
             font-family: 'DM Mono', monospace;
@@ -345,6 +365,7 @@
         <div class="nav-links">
             <a href="{% url 'product_list' %}">Products</a>
             <a href="{% url 'category_list' %}">Categories</a>
+            <a href="{% url 'purchase_order_list' %}">Orders</a>
             <a href="{% url 'finances' %}">Finances</a>
             <a href="{% url 'logout' %}" class="logout-btn">Logout</a>
         </div>
