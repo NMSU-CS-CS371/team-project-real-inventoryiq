@@ -567,7 +567,6 @@ def purchase_order_delete(request, pk):
 
 @login_required
 def purchase_order_receive(request, pk):
-    # marks a purchase order as received and updates the stock quantities
     if request.method == 'POST':
         order = get_object_or_404(PurchaseOrder, pk=pk, status='pending')
         for item in order.items.all():
