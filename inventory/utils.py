@@ -4,8 +4,7 @@ from django.core.mail import send_mail
 
 
 def send_low_stock_email(product):
-    """Send an email alert when a product's stock drops to or below its threshold."""
-
+    # sends an email to notify someone when a product is running low on stock
     recipient = os.getenv("LOW_STOCK_EMAIL")
     if not recipient:
         return

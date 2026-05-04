@@ -5,8 +5,7 @@ from .models import Category, Product, Expense, PurchaseOrder, PurchaseOrderItem
 
 
 class ProductForm(forms.ModelForm):
-    """Form used to create and update products in the inventory system."""
-
+    # the form for creating and editing products - has fields for name, price, quantity, etc
     class Meta:
         model = Product
         fields = [
@@ -47,8 +46,7 @@ class ProductForm(forms.ModelForm):
 
 
 class CategoryForm(forms.ModelForm):
-    """Form used to create product categories."""
-
+    # the form for creating and editing categories
     class Meta:
         model = Category
         fields = ["name", "parent"]
@@ -61,8 +59,7 @@ class CategoryForm(forms.ModelForm):
 
 
 class ExpenseForm(forms.ModelForm):
-    """Simple form for adding expenses from the finance page."""
-
+    # the form for adding expenses - just need amount, date, and optional notes
     class Meta:
         model = Expense
         fields = ["amount", "date", "note"]
@@ -76,8 +73,7 @@ class ExpenseForm(forms.ModelForm):
 
 
 class PurchaseOrderForm(forms.ModelForm):
-    """Order-level fields for creating and editing a purchase order."""
-
+    # the form for the main purchase order info - supplier, order number, date, etc
     class Meta:
         model = PurchaseOrder
         fields = ['supplier', 'order_number', 'note', 'delivery_date']
@@ -90,8 +86,7 @@ class PurchaseOrderForm(forms.ModelForm):
 
 
 class PurchaseOrderItemForm(forms.ModelForm):
-    """Single line-item row within a purchase order formset."""
-
+    # the form for a single item in a purchase order (like product and quantity)
     class Meta:
         model = PurchaseOrderItem
         fields = ['product', 'quantity']
@@ -101,6 +96,7 @@ class PurchaseOrderItemForm(forms.ModelForm):
         }
 
 
+# this creates a formset so you can add/edit multiple items in one purchase order at once
 PurchaseOrderItemFormSet = inlineformset_factory(
     PurchaseOrder,
     PurchaseOrderItem,

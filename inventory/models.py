@@ -4,8 +4,7 @@ from django.core.validators import MinValueValidator
 
 
 class Category(models.Model):
-    """Represents a product category used for organizing and filtering products in the inventory."""
-
+    # a category is basically just a folder to organize products into. you can have subcategories too
     name = models.CharField(max_length=100)
     parent = models.ForeignKey(
         'self',
@@ -16,6 +15,7 @@ class Category(models.Model):
     )
 
     def __str__(self):
+        # returns the category name, but shows the parent category too if it's a subcategory
         if self.parent:
             return f"{self.parent.name} > {self.name}"
         return self.name
@@ -26,8 +26,7 @@ class Category(models.Model):
 
 
 class Product(models.Model):
-    """Represents a product in the inventory."""
-
+    # a product is basically anything in the inventory - has a name, quantity, category, and prices
     name = models.CharField(max_length=200)
     category = models.ForeignKey(
         Category, on_delete=models.SET_NULL, null=True, blank=True
@@ -47,18 +46,17 @@ class Product(models.Model):
     )
 
     def __str__(self):
-        """Return the product name for display purposes."""
+        # just returns the product name so it looks nice in admin and forms
         return self.name
 
     @property
     def is_low_stock(self):
-        """Return True if the product quantity is at or below the low stock threshold."""
+        # checks if the product is running low on stock (less than or equal to the threshold)
         return self.quantity <= self.low_stock_threshold
 
 
 class Expense(models.Model):
-    """Simple expense record used by the finance page and dashboard rollups."""
-
+    # just tracks expenses like rent, utilities, etc for the finance page
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     date = models.DateField(default=timezone.now)
     note = models.TextField(blank=True)
@@ -68,10 +66,12 @@ class Expense(models.Model):
         ordering = ["-date", "-created_at"]
 
     def __str__(self):
+        # shows the expense amount and date nicely
         return f"Expense ${self.amount} on {self.date}"
 
 
 class DebtAccount(models.Model):
+    # tracks debts like loans or credit card balances, with interest rates and payment info
     name = models.CharField(max_length=150)
     principal = models.DecimalField(max_digits=12, decimal_places=2)
     apr = models.DecimalField(max_digits=6, decimal_places=2)
@@ -85,10 +85,12 @@ class DebtAccount(models.Model):
         ordering = ["name"]
 
     def __str__(self):
+        # just returns the debt account name
         return self.name
 
 
 class FinanceTransaction(models.Model):
+    # tracks all money stuff - like sales and expenses with amounts and dates
     EXPENSE = "expense"
     SALE = "sale"
     TRANSACTION_CHOICES = [
@@ -111,6 +113,7 @@ class FinanceTransaction(models.Model):
 
 
 class DebtPaymentOverride(models.Model):
+    # lets you set a custom payment amount for a specific month instead of the regular one
     debt = models.ForeignKey(DebtAccount, on_delete=models.CASCADE, related_name="payment_overrides")
     year_month = models.CharField(max_length=7)
     payment_amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -125,6 +128,7 @@ class DebtPaymentOverride(models.Model):
 
 
 class MonthlyBudget(models.Model):
+    # sets a budget amount for each month
     year_month = models.CharField(max_length=7, unique=True)
     planned_amount = models.DecimalField(max_digits=12, decimal_places=2)
     note = models.TextField(blank=True)
@@ -136,6 +140,7 @@ class MonthlyBudget(models.Model):
 
 
 class PurchaseOrder(models.Model):
+    # an order you create to buy stuff from suppliers. has items, dates, and a status
     SUPPLIER_CHOICES = [
         ('company_a', 'Company A'),
         ('company_b', 'Company B'),
@@ -156,15 +161,18 @@ class PurchaseOrder(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
+        # shows the order number and supplier name
         return f"{self.order_number} ({self.get_supplier_display()})"
 
 
 class PurchaseOrderItem(models.Model):
+    # a single line item in a purchase order - like "5 keyboards" or "10 monitors"
     purchase_order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('Product', on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 
     def __str__(self):
+        # shows the product name and how many we're ordering
         return f"{self.product.name} x{self.quantity}"
 
     class Meta:

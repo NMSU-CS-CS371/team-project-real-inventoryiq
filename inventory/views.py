@@ -15,6 +15,7 @@ from .utils import send_low_stock_email
 
 @login_required
 def dashboard(request):
+    # grabs all the search and filter stuff from the URL so we can use it
     query = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '').strip()
     category_filter = request.GET.get('category', '').strip()
@@ -179,14 +180,8 @@ def dashboard(request):
 
 @login_required
 def product_list(request):
-    """
-    Display products with optional search/filter, grouped by category.
-
-    Categories are shown alphabetically.
-    Products without a category are grouped under 'Not Under Category' last.
-    """
-
-    # Read search/filter values from the URL
+    # shows all the products, organized by category. you can search and filter too
+    # grabs search/filter values from the URL
     query = request.GET.get("q", "").strip()
     category_id = request.GET.get("category", "").strip()
 
@@ -241,9 +236,7 @@ def product_list(request):
 
 @login_required
 def product_add(request):
-    """Create a new product and optionally preselect its category."""
-
-    # Allows category to be preselected when coming from a category page
+    # creates a new product. can pre-select the category if you come from the category page
     category_id = request.GET.get("category")
 
     if request.method == "POST":
@@ -275,8 +268,7 @@ def product_add(request):
 
 @login_required
 def product_edit(request, pk):
-    """Update an existing product."""
-
+    # lets you edit a product that already exists
     product = get_object_or_404(Product, pk=pk)
 
     if request.method == "POST":
@@ -311,8 +303,7 @@ def product_edit(request, pk):
 
 @login_required
 def product_delete(request, pk):
-    """Delete a product from the inventory after confirming the action."""
-
+    # deletes a product but asks you to confirm first so you don't mess up
     product = get_object_or_404(Product, pk=pk)
     category_pk = product.category.pk if product.category else None
 
@@ -332,14 +323,14 @@ def product_delete(request, pk):
 
 @login_required
 def category_list(request):
+    # shows all the top-level categories and their subcategories
     parent_categories = Category.objects.filter(parent__isnull=True).prefetch_related('subcategories').order_by('name')
     return render(request, 'inventory/category_list.html', {'categories': parent_categories})
 
 
 @login_required
 def category_add(request):
-    """Create a new product category."""
-
+    # creates a new category to organize products
     if request.method == "POST":
         form = CategoryForm(request.POST)
         if form.is_valid():
@@ -360,6 +351,7 @@ def category_add(request):
 
 @login_required
 def category_detail(request, pk):
+    # shows all the products in a specific category and its subcategories
     category = get_object_or_404(Category, pk=pk)
     subcategories = category.subcategories.all().order_by('name')
     products = Product.objects.filter(category=category).order_by('name')
@@ -378,6 +370,7 @@ def category_detail(request, pk):
 
 @login_required
 def category_delete(request, pk):
+    # deletes a category after you confirm
     category = get_object_or_404(Category, pk=pk)
 
     if request.method == 'POST':
@@ -392,8 +385,7 @@ def category_delete(request, pk):
 
 @login_required
 def adjust_quantity(request, pk):
-    """Increase or decrease a product quantity by 1."""
-
+    # adds or removes 1 item from the product's quantity (like a quick adjust button)
     product = get_object_or_404(Product, pk=pk)
 
     if request.method == "POST":
@@ -417,14 +409,14 @@ def adjust_quantity(request, pk):
             product.save()
 
     # Return to category page if applicable
-    if product.category:
-        return redirect("category_detail", pk=product.category.pk)
+    #if product.category:
+    #    return redirect("category_detail", pk=product.category.pk)
     return redirect("product_list")
 
 
 @login_required
 def finances(request):
-    """Display the total retail value of all inventory stock."""
+    # shows the money stuff - like how much the inventory is worth, profits, expenses, etc
     if request.method == "POST":
         expense_form = ExpenseForm(request.POST)
         if expense_form.is_valid():
@@ -481,8 +473,7 @@ def finances(request):
 
 @login_required
 def export_csv(request):
-    """Export all products as a CSV file for download."""
-
+    # lets you download all the products as a CSV file so you can use it in excel or wherever
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = 'attachment; filename="inventory.csv"'
 
@@ -518,12 +509,14 @@ def export_csv(request):
 
 @login_required
 def purchase_order_list(request):
+    # shows all the purchase orders you've created
     orders = PurchaseOrder.objects.prefetch_related('items').all()
     return render(request, 'inventory/purchase_order_list.html', {'orders': orders})
 
 
 @login_required
 def purchase_order_create(request):
+    # creates a new purchase order for ordering stuff from suppliers
     if request.method == 'POST':
         form = PurchaseOrderForm(request.POST)
         formset = PurchaseOrderItemFormSet(request.POST)
@@ -543,6 +536,7 @@ def purchase_order_create(request):
 
 @login_required
 def purchase_order_edit(request, pk):
+    # edits an existing purchase order
     order = get_object_or_404(PurchaseOrder, pk=pk)
     if request.method == 'POST':
         form = PurchaseOrderForm(request.POST, instance=order)
@@ -562,6 +556,7 @@ def purchase_order_edit(request, pk):
 
 @login_required
 def purchase_order_delete(request, pk):
+    # deletes a purchase order after you confirm
     order = get_object_or_404(PurchaseOrder, pk=pk)
     if request.method == 'POST':
         order.delete()
@@ -572,6 +567,7 @@ def purchase_order_delete(request, pk):
 
 @login_required
 def purchase_order_receive(request, pk):
+    # marks a purchase order as received and updates the stock quantities
     if request.method == 'POST':
         order = get_object_or_404(PurchaseOrder, pk=pk, status='pending')
         for item in order.items.all():
