@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, Category, PurchaseOrder, PurchaseOrderItem
+from .models import ActivityLog, Product, Category, PurchaseOrder, PurchaseOrderItem
 
 
 @admin.register(Category)
@@ -11,9 +11,16 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     # shows product details in the admin list, lets you filter by category and search by name
-    list_display = ['name', 'category', 'quantity', 'low_stock_threshold', 'is_low_stock', 'updated_at']
+    list_display = ['name', 'category', 'quantity', 'display_order', 'low_stock_threshold', 'is_low_stock', 'updated_at']
     list_filter = ['category']
     search_fields = ['name']
+
+
+@admin.register(ActivityLog)
+class ActivityLogAdmin(admin.ModelAdmin):
+    list_display = ['message', 'activity_type', 'created_at']
+    list_filter = ['activity_type']
+    search_fields = ['message']
 
 
 class PurchaseOrderItemInline(admin.TabularInline):

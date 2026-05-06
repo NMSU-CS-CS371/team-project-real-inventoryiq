@@ -1,16 +1,29 @@
 import csv
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Count
-from django.db.models.functions import Coalesce
-from django.http import HttpResponse
+from django.db.models import Q, Count, Max
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from .forms import CategoryForm, ProductForm, ExpenseForm, PurchaseOrderForm, PurchaseOrderItemFormSet
-from .models import Category, Product, Expense, PurchaseOrder
-from .utils import send_low_stock_email
+from .models import ActivityLog, Category, Product, Expense, PurchaseOrder
+from .utils import log_activity, send_low_stock_email
+
+
+def _next_product_order(category_id):
+    max_order = (
+        Product.objects.filter(category_id=category_id)
+        .aggregate(Max("display_order"))
+        .get("display_order__max")
+    )
+    if max_order is None:
+        return 0
+    return max_order + 1
 
 
 @login_required
@@ -145,6 +158,8 @@ def dashboard(request):
     net_inventory_value = grand_total - expenses_total
 
     category_breakdown = Category.objects.annotate(product_count=Count('product')).order_by('name')
+    activity_cutoff = timezone.now() - timedelta(days=7)
+    activity_items = ActivityLog.objects.filter(created_at__gte=activity_cutoff)[:30]
 
     context = {
         'total_products': len(all_products),
@@ -158,7 +173,8 @@ def dashboard(request):
         'query': query,
         'selected_status': status_filter,
         'selected_category': category_filter,
-        'activity_items': all_products[:5],
+        'activity_items': activity_items,
+        'recent_expenses': expenses[:8],
         'finance_category_breakdown': finance_category_breakdown,
         'grand_total': grand_total,
         'expenses_total': expenses_total,
@@ -186,7 +202,7 @@ def product_list(request):
     category_id = request.GET.get("category", "").strip()
 
     # Base product/category queries
-    products = Product.objects.select_related("category").all().order_by("name")
+    products = Product.objects.select_related("category").all().order_by("display_order", "name")
     categories = Category.objects.all().order_by("name")
 
     # Search by product name, description, or category name
@@ -201,26 +217,32 @@ def product_list(request):
     if category_id:
         products = products.filter(category_id=category_id)
 
-    # Temporary dictionary for grouping products
     grouped_dict = {}
-
     for product in products:
-        key = product.category.name if product.category else None
-        if key not in grouped_dict:
-            grouped_dict[key] = []
-        grouped_dict[key].append(product)
+        grouped_dict.setdefault(product.category_id, []).append(product)
 
-    # Final ordered grouping for display
     grouped_products = []
-
-    # Add categories first in alphabetical order
     for category in categories:
-        if category.name in grouped_dict:
-            grouped_products.append((category.name, grouped_dict[category.name]))
+        products_in_group = grouped_dict.get(category.id)
+        if products_in_group:
+            grouped_products.append(
+                {
+                    "name": category.name,
+                    "category": category,
+                    "products": products_in_group,
+                    "collapse_id": f"category-products-{category.id}",
+                }
+            )
 
-    # Add uncategorized products last
     if None in grouped_dict:
-        grouped_products.append(("Not Under Category", grouped_dict[None]))
+        grouped_products.append(
+            {
+                "name": "Not Under Category",
+                "category": None,
+                "products": grouped_dict[None],
+                "collapse_id": "category-products-uncategorized",
+            }
+        )
 
     return render(
         request,
@@ -242,7 +264,10 @@ def product_add(request):
     if request.method == "POST":
         form = ProductForm(request.POST)
         if form.is_valid():
-            product = form.save()
+            product = form.save(commit=False)
+            product.display_order = _next_product_order(product.category_id)
+            product.save()
+            log_activity("product", f"Added product: {product.name}.")
             messages.success(request, "Product added successfully.")
 
             # Redirect back to that category if product belongs to one
@@ -270,11 +295,16 @@ def product_add(request):
 def product_edit(request, pk):
     # lets you edit a product that already exists
     product = get_object_or_404(Product, pk=pk)
+    original_category_id = product.category_id
 
     if request.method == "POST":
         form = ProductForm(request.POST, instance=product)
         if form.is_valid():
-            updated_product = form.save()
+            updated_product = form.save(commit=False)
+            if updated_product.category_id != original_category_id:
+                updated_product.display_order = _next_product_order(updated_product.category_id)
+            updated_product.save()
+            log_activity("product", f"Updated product: {updated_product.name}.")
             messages.success(request, "Product updated successfully.")
 
             # Check low stock after manual edit
@@ -306,9 +336,11 @@ def product_delete(request, pk):
     # deletes a product but asks you to confirm first so you don't mess up
     product = get_object_or_404(Product, pk=pk)
     category_pk = product.category.pk if product.category else None
+    product_name = product.name
 
     if request.method == "POST":
         product.delete()
+        log_activity("product", f"Removed product: {product_name}.")
         messages.success(request, "Product deleted.")
 
         # Redirect to the category page if the product had a category
@@ -319,6 +351,39 @@ def product_delete(request, pk):
     return render(
         request, "inventory/product_confirm_delete.html", {"product": product}
     )
+
+
+@login_required
+@require_POST
+def product_reorder(request):
+    order_value = request.POST.get("product_order", "")
+    try:
+        product_ids = [int(value) for value in order_value.split(",") if value.strip()]
+    except ValueError:
+        return JsonResponse({"success": False, "error": "Invalid product order."}, status=400)
+
+    if not product_ids:
+        return JsonResponse({"success": False, "error": "No products to reorder."}, status=400)
+
+    products = list(Product.objects.select_related("category").filter(id__in=product_ids))
+    if len(products) != len(product_ids):
+        return JsonResponse({"success": False, "error": "Product list changed."}, status=400)
+
+    category_ids = {product.category_id for product in products}
+    if len(category_ids) != 1:
+        return JsonResponse({"success": False, "error": "Products must stay in one category."}, status=400)
+
+    product_by_id = {product.id: product for product in products}
+    for display_order, product_id in enumerate(product_ids):
+        product_by_id[product_id].display_order = display_order
+
+    Product.objects.bulk_update(product_by_id.values(), ["display_order"])
+
+    first_product = products[0]
+    category_name = first_product.category.name if first_product.category else "Not Under Category"
+    log_activity("product", f"Reordered products in {category_name}.")
+
+    return JsonResponse({"success": True})
 
 
 @login_required
@@ -335,6 +400,7 @@ def category_add(request):
         form = CategoryForm(request.POST)
         if form.is_valid():
             category = form.save()
+            log_activity("category", f"Added category: {category.name}.")
             messages.success(request, "Category added successfully.")
             return redirect("category_detail", pk=category.pk)
     else:
@@ -354,11 +420,11 @@ def category_detail(request, pk):
     # shows all the products in a specific category and its subcategories
     category = get_object_or_404(Category, pk=pk)
     subcategories = category.subcategories.all().order_by('name')
-    products = Product.objects.filter(category=category).order_by('name')
+    products = Product.objects.filter(category=category).order_by('display_order', 'name')
 
     selected_subcategory = request.GET.get('subcategory', '').strip()
     if selected_subcategory:
-        products = Product.objects.filter(category_id=selected_subcategory).order_by('name')
+        products = Product.objects.filter(category_id=selected_subcategory).order_by('display_order', 'name')
 
     return render(request, 'inventory/category_detail.html', {
         'category': category,
@@ -372,9 +438,11 @@ def category_detail(request, pk):
 def category_delete(request, pk):
     # deletes a category after you confirm
     category = get_object_or_404(Category, pk=pk)
+    category_name = category.name
 
     if request.method == 'POST':
         category.delete()
+        log_activity("category", f"Removed category: {category_name}.")
         messages.success(request, 'Category deleted successfully.')
         return redirect('category_list')
 
@@ -390,23 +458,32 @@ def adjust_quantity(request, pk):
 
     if request.method == "POST":
         action = request.POST.get("action")
+        old_quantity = product.quantity
+        changed = False
 
         if action == "increment":
             product.quantity += 1
+            changed = True
         elif action == "decrement" and product.quantity > 0:
             # Prevent quantity from going below zero
             product.quantity -= 1
+            changed = True
 
-        product.save()
-
-        # Send email if stock just dropped low (and we haven't already notified)
-        if product.is_low_stock and not product.low_stock_notified:
-            send_low_stock_email(product)
-
-        # Reset the flag if stock is back above the threshold
-        if not product.is_low_stock and product.low_stock_notified:
-            product.low_stock_notified = False
+        if changed:
             product.save()
+            log_activity(
+                "stock",
+                f"Adjusted stock for {product.name}: {old_quantity} to {product.quantity}.",
+            )
+
+            # Send email if stock just dropped low (and we haven't already notified)
+            if product.is_low_stock and not product.low_stock_notified:
+                send_low_stock_email(product)
+
+            # Reset the flag if stock is back above the threshold
+            if not product.is_low_stock and product.low_stock_notified:
+                product.low_stock_notified = False
+                product.save()
 
     # Return to category page if applicable
     #if product.category:
@@ -420,7 +497,8 @@ def finances(request):
     if request.method == "POST":
         expense_form = ExpenseForm(request.POST)
         if expense_form.is_valid():
-            expense_form.save()
+            expense = expense_form.save()
+            log_activity("expense", f"Recorded expense: ${expense.amount}.")
             messages.success(request, "Expense added.")
             return redirect("finances")
     else:
@@ -469,6 +547,17 @@ def finances(request):
         "expense_form": expense_form,
     }
     return render(request, "inventory/finances.html", context)
+
+
+@login_required
+@require_POST
+def expense_delete(request, pk):
+    expense = get_object_or_404(Expense, pk=pk)
+    amount = expense.amount
+    expense.delete()
+    log_activity("expense", f"Removed expense: ${amount}.")
+    messages.success(request, "Expense removed.")
+    return redirect("finances")
 
 
 @login_required
@@ -524,6 +613,7 @@ def purchase_order_create(request):
             order = form.save()
             formset.instance = order
             formset.save()
+            log_activity("purchase_order", f"Created purchase order: {order.order_number}.")
             messages.success(request, 'Purchase order created.')
             return redirect('purchase_order_list')
     else:
@@ -542,8 +632,9 @@ def purchase_order_edit(request, pk):
         form = PurchaseOrderForm(request.POST, instance=order)
         formset = PurchaseOrderItemFormSet(request.POST, instance=order)
         if form.is_valid() and formset.is_valid():
-            form.save()
+            order = form.save()
             formset.save()
+            log_activity("purchase_order", f"Updated purchase order: {order.order_number}.")
             messages.success(request, 'Purchase order updated.')
             return redirect('purchase_order_list')
     else:
@@ -558,8 +649,10 @@ def purchase_order_edit(request, pk):
 def purchase_order_delete(request, pk):
     # deletes a purchase order after you confirm
     order = get_object_or_404(PurchaseOrder, pk=pk)
+    order_number = order.order_number
     if request.method == 'POST':
         order.delete()
+        log_activity("purchase_order", f"Removed purchase order: {order_number}.")
         messages.success(request, 'Purchase order deleted.')
         return redirect('purchase_order_list')
     return render(request, 'inventory/purchase_order_confirm_delete.html', {'order': order})
@@ -574,5 +667,6 @@ def purchase_order_receive(request, pk):
             item.product.save()
         order.status = 'received'
         order.save()
+        log_activity("purchase_order", f"Received purchase order: {order.order_number}.")
         messages.success(request, f'Purchase order {order.order_number} marked as received. Stock updated.')
     return redirect('purchase_order_list')

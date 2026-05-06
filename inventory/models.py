@@ -44,6 +44,7 @@ class Product(models.Model):
     cost_value = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
+    display_order = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         # just returns the product name so it looks nice in admin and forms
@@ -68,6 +69,19 @@ class Expense(models.Model):
     def __str__(self):
         # shows the expense amount and date nicely
         return f"Expense ${self.amount} on {self.date}"
+
+
+class ActivityLog(models.Model):
+    # simple history for the dashboard activity center
+    activity_type = models.CharField(max_length=40)
+    message = models.CharField(max_length=255)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.message
 
 
 class DebtAccount(models.Model):

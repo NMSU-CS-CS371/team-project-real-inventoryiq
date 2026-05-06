@@ -8,12 +8,14 @@ urlpatterns = [
     path('products/', views.product_list, name='product_list'),
     path('products/add/', views.product_add, name='product_add'),
     path('products/export/', views.export_csv, name='export_csv'),
+    path('products/reorder/', views.product_reorder, name='product_reorder'),
     path('products/<int:pk>/adjust/', views.adjust_quantity, name='adjust_quantity'),
     path('products/<int:pk>/edit/', views.product_edit, name='product_edit'),
     path('products/<int:pk>/delete/', views.product_delete, name='product_delete'),
 
     # Finances
     path('finances/', views.finances, name='finances'),
+    path('finances/expenses/<int:pk>/delete/', views.expense_delete, name='expense_delete'),
 
     # Purchase Orders
     path('purchase-orders/', views.purchase_order_list, name='purchase_order_list'),
