@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from decimal import Decimal
 
@@ -6,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import ActivityLog, Category, Expense, Product
+from .models import ActivityLog, Category, Expense, Product, PurchaseOrder
 
 
 class InventoryIQUpdateTests(TestCase):
@@ -52,6 +53,61 @@ class InventoryIQUpdateTests(TestCase):
         self.assertEqual(second.display_order, 0)
         self.assertTrue(ActivityLog.objects.filter(message="Reordered products in Keyboards.").exists())
 
+    def test_product_drag_can_move_from_uncategorized_to_category(self):
+        category = Category.objects.create(name="Clothing")
+        product = Product.objects.create(name="Hat", category=None, display_order=0)
+
+        response = self.client.post(
+            reverse("product_reorder"),
+            data=json.dumps(
+                {
+                    "groups": [
+                        {"category_id": category.id, "product_ids": [product.id]},
+                        {"category_id": None, "product_ids": []},
+                    ]
+                }
+            ),
+            content_type="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        product.refresh_from_db()
+        self.assertEqual(product.category, category)
+        self.assertEqual(product.display_order, 0)
+        self.assertTrue(
+            ActivityLog.objects.filter(
+                message="Moved Hat from Uncategorized to Clothing."
+            ).exists()
+        )
+
+    def test_product_drag_can_move_between_categories_without_losing_order(self):
+        clothing = Category.objects.create(name="Clothing")
+        accessories = Category.objects.create(name="Accessories")
+        hat = Product.objects.create(name="Hat", category=clothing, display_order=0)
+        belt = Product.objects.create(name="Belt", category=accessories, display_order=0)
+
+        response = self.client.post(
+            reverse("product_reorder"),
+            data=json.dumps(
+                {
+                    "groups": [
+                        {"category_id": clothing.id, "product_ids": []},
+                        {"category_id": accessories.id, "product_ids": [belt.id, hat.id]},
+                    ]
+                }
+            ),
+            content_type="application/json",
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        hat.refresh_from_db()
+        belt.refresh_from_db()
+        self.assertEqual(hat.category, accessories)
+        self.assertEqual(hat.display_order, 1)
+        self.assertEqual(belt.display_order, 0)
+
     def test_dashboard_activity_center_shows_only_past_week(self):
         old_activity = ActivityLog.objects.create(
             activity_type="product",
@@ -83,6 +139,7 @@ class InventoryIQUpdateTests(TestCase):
 
     def test_product_list_renders_collapsible_sortable_groups(self):
         category = Category.objects.create(name="Monitors")
+        empty_category = Category.objects.create(name="Empty")
         Product.objects.create(name="Display A", category=category, display_order=0)
 
         response = self.client.get(reverse("product_list"))
@@ -90,3 +147,60 @@ class InventoryIQUpdateTests(TestCase):
         self.assertContains(response, "Expand all")
         self.assertContains(response, "Display A")
         self.assertContains(response, "product-sortable-list")
+        self.assertContains(response, f'data-category-id="{empty_category.id}"')
+        self.assertContains(response, "Drop a product here to move it into Empty.")
+
+    def test_search_suggestions_include_finances_page(self):
+        response = self.client.get(
+            reverse("global_search_suggestions"),
+            {"q": "finance"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        results = response.json()["results"]
+        self.assertTrue(any(result["title"] == "Finances" for result in results))
+
+    def test_search_suggestions_include_product_context(self):
+        category = Category.objects.create(name="Clothing")
+        product = Product.objects.create(
+            name="Hat",
+            category=category,
+            quantity=4,
+            sku_number="HAT-001",
+        )
+
+        response = self.client.get(
+            reverse("global_search_suggestions"),
+            {"q": "hat"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        results = response.json()["results"]
+        product_result = next(result for result in results if result["title"] == "Hat")
+        self.assertEqual(product_result["type"], "Product")
+        self.assertIn("Clothing", product_result["subtitle"])
+        self.assertIn("Qty 4", product_result["subtitle"])
+        self.assertIn("HAT-001", product_result["subtitle"])
+        self.assertIn(f"highlight_product={product.id}", product_result["url"])
+
+    def test_global_search_results_group_records(self):
+        category = Category.objects.create(name="Hat Category")
+        Product.objects.create(name="Hat", category=category)
+        PurchaseOrder.objects.create(
+            supplier="company_a",
+            order_number="PO-HAT",
+            note="Hat shipment",
+        )
+        Expense.objects.create(amount=Decimal("12.00"), note="Hat display")
+
+        response = self.client.get(reverse("global_search"), {"q": "hat"})
+
+        self.assertContains(response, "Products")
+        self.assertContains(response, "Categories")
+        self.assertContains(response, "Purchase Orders")
+        self.assertContains(response, "Expenses")
+        self.assertContains(response, "Hat")
+        self.assertContains(response, "Hat Category")
+        self.assertContains(response, "PO-HAT")
+        self.assertContains(response, "Hat display")

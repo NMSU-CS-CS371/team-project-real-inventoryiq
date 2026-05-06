@@ -18,6 +18,29 @@
         background: var(--surface-2);
     }
 
+    .product-sortable-list {
+        min-height: 3.75rem;
+    }
+
+    .product-sortable-list.drag-over {
+        outline: 1.5px dashed rgba(16, 185, 129, 0.65);
+        outline-offset: 3px;
+    }
+
+    .product-row.product-highlight {
+        border-left: 4px solid var(--accent);
+        background: rgba(16, 185, 129, 0.12);
+    }
+
+    .empty-drop-message {
+        border: 1px dashed var(--border);
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .product-sortable-list.has-products .empty-drop-message {
+        display: none;
+    }
+
     .drag-handle {
         color: var(--ink-muted);
         font-size: 1.15rem;
@@ -99,9 +122,9 @@
             </div>
 
             <div id="{{ group.collapse_id }}" class="collapse show product-category-collapse">
-                <div class="list-group product-sortable-list" data-group="{{ group.collapse_id }}">
+                <div class="list-group product-sortable-list {% if group.products %}has-products{% endif %}" data-category-id="{{ group.category_id }}">
                     {% for product in group.products %}
-                    <div class="list-group-item product-row d-flex justify-content-between align-items-center py-3" draggable="true" data-product-id="{{ product.id }}">
+                    <div class="list-group-item product-row d-flex justify-content-between align-items-center py-3 {% if highlight_product == product.id|stringformat:'s' %}product-highlight{% endif %}" draggable="true" data-product-id="{{ product.id }}">
                         <div class="d-flex align-items-start gap-2">
                             <span class="drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></span>
                             <div>
@@ -135,6 +158,9 @@
                         </div>
                     </div>
                     {% endfor %}
+                    <div class="list-group-item empty-drop-message text-muted py-3">
+                        Drop a product here to move it into {{ group.name }}.
+                    </div>
                 </div>
             </div>
         </div>
@@ -147,28 +173,44 @@
     (function () {
         const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
         const reorderUrl = "{% url 'product_reorder' %}";
+        let draggingRow = null;
+        let sourceList = null;
 
-        function saveOrder(list) {
-            const productOrder = Array.from(list.querySelectorAll(".product-row"))
-                .map((row) => row.dataset.productId)
-                .join(",");
+        function productIdsForList(list) {
+            return Array.from(list.querySelectorAll(".product-row"))
+                .map((row) => row.dataset.productId);
+        }
 
-            if (!productOrder) {
+        function updateEmptyState(list) {
+            list.classList.toggle("has-products", productIdsForList(list).length > 0);
+        }
+
+        function saveGroups(lists) {
+            const uniqueLists = Array.from(new Set(lists.filter(Boolean)));
+            if (!uniqueLists.length) {
                 return;
             }
 
-            const formData = new URLSearchParams();
-            formData.append("product_order", productOrder);
+            const groups = uniqueLists.map((list) => ({
+                category_id: list.dataset.categoryId || null,
+                product_ids: productIdsForList(list),
+            }));
 
             fetch(reorderUrl, {
                 method: "POST",
                 headers: {
                     "X-CSRFToken": csrfToken,
                     "X-Requested-With": "XMLHttpRequest",
-                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Content-Type": "application/json",
                 },
-                body: formData.toString(),
-            }).catch(() => {});
+                body: JSON.stringify({ groups: groups }),
+            }).then((response) => {
+                if (!response.ok) {
+                    window.location.reload();
+                }
+            }).catch(() => {
+                window.location.reload();
+            });
         }
 
         function getDragAfterElement(container, y) {
@@ -191,12 +233,13 @@
                 if (!row || !list.contains(row)) {
                     return;
                 }
+                draggingRow = row;
+                sourceList = list;
                 row.classList.add("dragging");
                 event.dataTransfer.effectAllowed = "move";
             });
 
             list.addEventListener("dragover", (event) => {
-                const draggingRow = list.querySelector(".dragging");
                 if (!draggingRow) {
                     return;
                 }
@@ -210,13 +253,27 @@
                 }
             });
 
+            list.addEventListener("dragleave", (event) => {
+                if (!list.contains(event.relatedTarget)) {
+                    list.classList.remove("drag-over");
+                }
+            });
+
+            list.addEventListener("dragenter", () => {
+                if (draggingRow) {
+                    list.classList.add("drag-over");
+                }
+            });
+
             list.addEventListener("drop", (event) => {
-                const draggingRow = list.querySelector(".dragging");
                 if (!draggingRow) {
                     return;
                 }
                 event.preventDefault();
-                saveOrder(list);
+                list.classList.remove("drag-over");
+                updateEmptyState(list);
+                updateEmptyState(sourceList);
+                saveGroups([sourceList, list]);
             });
 
             list.addEventListener("dragend", (event) => {
@@ -224,6 +281,12 @@
                 if (row) {
                     row.classList.remove("dragging");
                 }
+                document.querySelectorAll(".product-sortable-list").forEach((dropList) => {
+                    dropList.classList.remove("drag-over");
+                    updateEmptyState(dropList);
+                });
+                draggingRow = null;
+                sourceList = null;
             });
         });
 

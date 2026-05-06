@@ -3,6 +3,8 @@ from . import views
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),
+    path('search/', views.global_search, name='global_search'),
+    path('search/suggestions/', views.global_search_suggestions, name='global_search_suggestions'),
 
     # Product routes
     path('products/', views.product_list, name='product_list'),
