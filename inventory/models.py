@@ -1,10 +1,12 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator
+from django.contrib.auth.models import User
 
 
 class Category(models.Model):
     # a category is basically just a folder to organize products into. you can have subcategories too
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=100)
     parent = models.ForeignKey(
         'self',
@@ -27,6 +29,7 @@ class Category(models.Model):
 
 class Product(models.Model):
     # a product is basically anything in the inventory - has a name, quantity, category, and prices
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=200)
     category = models.ForeignKey(
         Category, on_delete=models.SET_NULL, null=True, blank=True
@@ -44,6 +47,7 @@ class Product(models.Model):
     cost_value = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
+    display_order = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         # just returns the product name so it looks nice in admin and forms
@@ -57,6 +61,7 @@ class Product(models.Model):
 
 class Expense(models.Model):
     # just tracks expenses like rent, utilities, etc for the finance page
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     date = models.DateField(default=timezone.now)
     note = models.TextField(blank=True)
@@ -70,8 +75,22 @@ class Expense(models.Model):
         return f"Expense ${self.amount} on {self.date}"
 
 
+class ActivityLog(models.Model):
+    # simple history for the dashboard activity center
+    activity_type = models.CharField(max_length=40)
+    message = models.CharField(max_length=255)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.message
+
+
 class DebtAccount(models.Model):
     # tracks debts like loans or credit card balances, with interest rates and payment info
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=150)
     principal = models.DecimalField(max_digits=12, decimal_places=2)
     apr = models.DecimalField(max_digits=6, decimal_places=2)
@@ -98,6 +117,7 @@ class FinanceTransaction(models.Model):
         (SALE, "Sale"),
     ]
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     transaction_type = models.CharField(max_length=20, choices=TRANSACTION_CHOICES)
     date = models.DateField(default=timezone.now)
     note = models.TextField(blank=True)
@@ -129,6 +149,7 @@ class DebtPaymentOverride(models.Model):
 
 class MonthlyBudget(models.Model):
     # sets a budget amount for each month
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     year_month = models.CharField(max_length=7, unique=True)
     planned_amount = models.DecimalField(max_digits=12, decimal_places=2)
     note = models.TextField(blank=True)
@@ -150,6 +171,7 @@ class PurchaseOrder(models.Model):
         ('pending', 'Pending'),
         ('received', 'Received'),
     ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     supplier = models.CharField(max_length=50, choices=SUPPLIER_CHOICES)
     order_number = models.CharField(max_length=100, unique=True)
     note = models.TextField(blank=True, default='')

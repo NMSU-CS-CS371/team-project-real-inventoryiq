@@ -3,6 +3,19 @@ import os
 from django.core.mail import send_mail
 
 
+def log_activity(activity_type, message, created_at=None):
+    # imported here to avoid model import loops in utility code
+    from .models import ActivityLog
+
+    data = {
+        "activity_type": activity_type,
+        "message": message[:255],
+    }
+    if created_at:
+        data["created_at"] = created_at
+    return ActivityLog.objects.create(**data)
+
+
 def send_low_stock_email(product):
     # sends an email to notify someone when a product is running low on stock
     recipient = os.getenv("LOW_STOCK_EMAIL")

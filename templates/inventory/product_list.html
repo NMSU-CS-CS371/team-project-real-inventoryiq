@@ -2,9 +2,63 @@
 {% block title %}Products — InventoryIQ{% endblock %}
 
 {% block content %}
+<style>
+    .product-category-header {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+    }
+
+    .product-sortable-list .product-row {
+        cursor: grab;
+    }
+
+    .product-sortable-list .product-row.dragging {
+        opacity: 0.55;
+        background: var(--surface-2);
+    }
+
+    .product-sortable-list {
+        min-height: 3.75rem;
+    }
+
+    .product-sortable-list.drag-over {
+        outline: 1.5px dashed rgba(16, 185, 129, 0.65);
+        outline-offset: 3px;
+    }
+
+    .product-row.product-highlight {
+        border-left: 4px solid var(--accent);
+        background: rgba(16, 185, 129, 0.12);
+    }
+
+    .empty-drop-message {
+        border: 1px dashed var(--border);
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .product-sortable-list.has-products .empty-drop-message {
+        display: none;
+    }
+
+    .drag-handle {
+        color: var(--ink-muted);
+        font-size: 1.15rem;
+    }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Products</h2>
     <div class="d-flex gap-2">
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Categories
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark">
+                <li><button class="dropdown-item" type="button" id="expand-all-products">Expand all</button></li>
+                <li><button class="dropdown-item" type="button" id="collapse-all-products">Collapse all</button></li>
+            </ul>
+        </div>
         <a href="{% url 'category_list' %}" class="btn btn-outline-secondary">Categories</a>
         <a href="{% url 'purchase_order_list' %}" class="btn btn-outline-secondary">Purchase Orders</a>
         <a href="{% url 'export_csv' %}" class="btn btn-outline-secondary">Export CSV</a>
@@ -46,58 +100,204 @@
 </form>
 
 {% if grouped_products %}
-    {% for group_name, products_in_group in grouped_products %}
+    {% for group in grouped_products %}
         <div class="mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="mb-0">{{ group_name }}</h4>
-                {% if group_name != "Not Under Category" %}
-                    {% for category in categories %}
-                        {% if category.name == group_name %}
-                            <a href="{% url 'category_detail' category.pk %}" class="btn btn-sm btn-outline-secondary">
-                                Open Category
-                            </a>
-                        {% endif %}
-                    {% endfor %}
+            <div class="product-category-header d-flex justify-content-between align-items-center p-3 mb-2">
+                <button
+                    class="btn btn-link text-decoration-none text-start p-0 text-reset fw-semibold"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#{{ group.collapse_id }}"
+                    aria-expanded="true"
+                    aria-controls="{{ group.collapse_id }}"
+                >
+                    <i class="bi bi-chevron-down me-2"></i>{{ group.name }}
+                    <span class="text-muted small ms-2">{{ group.products|length }} item{{ group.products|length|pluralize }}</span>
+                </button>
+                {% if group.category %}
+                    <a href="{% url 'category_detail' group.category.pk %}" class="btn btn-sm btn-outline-secondary">
+                        Open Category
+                    </a>
                 {% endif %}
             </div>
 
-            <div class="list-group">
-                {% for product in products_in_group %}
-                <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                    <div>
-                        <strong>{{ product.name }}</strong>
-                        {% if product.is_low_stock %}
-                        <span class="badge bg-danger ms-2">Low Stock</span>
-                        {% endif %}
-                        {% if product.description %}
-                        <div class="text-muted small mt-1">{{ product.description }}</div>
-                        {% endif %}
+            <div id="{{ group.collapse_id }}" class="collapse show product-category-collapse">
+                <div class="list-group product-sortable-list {% if group.products %}has-products{% endif %}" data-category-id="{{ group.category_id }}">
+                    {% for product in group.products %}
+                    <div class="list-group-item product-row d-flex justify-content-between align-items-center py-3 {% if highlight_product == product.id|stringformat:'s' %}product-highlight{% endif %}" draggable="true" data-product-id="{{ product.id }}">
+                        <div class="d-flex align-items-start gap-2">
+                            <span class="drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></span>
+                            <div>
+                                <strong>{{ product.name }}</strong>
+                                {% if product.is_low_stock %}
+                                <span class="badge bg-danger ms-2">Low Stock</span>
+                                {% endif %}
+                                {% if product.description %}
+                                <div class="text-muted small mt-1">{{ product.description }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="decrement">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">−</button>
+                            </form>
+
+                            <span class="fw-bold mx-1">{{ product.quantity }}</span>
+
+                            <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="increment">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">+</button>
+                            </form>
+
+                            <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                            <a href="{% url 'product_delete' product.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                        </div>
                     </div>
-
-                    <div class="d-flex align-items-center gap-2">
-                        <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="decrement">
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">−</button>
-                        </form>
-
-                        <span class="fw-bold mx-1">{{ product.quantity }}</span>
-
-                        <form method="post" action="{% url 'adjust_quantity' product.pk %}" class="d-inline">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="increment">
-                            <button type="submit" class="btn btn-sm btn-outline-secondary">+</button>
-                        </form>
-
-                        <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                        <a href="{% url 'product_delete' product.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                    {% endfor %}
+                    <div class="list-group-item empty-drop-message text-muted py-3">
+                        Drop a product here to move it into {{ group.name }}.
                     </div>
                 </div>
-                {% endfor %}
             </div>
         </div>
     {% endfor %}
 {% else %}
 <p class="text-muted">No products yet. <a href="{% url 'product_add' %}">Add your first product.</a></p>
 {% endif %}
+
+<script>
+    (function () {
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
+        const reorderUrl = "{% url 'product_reorder' %}";
+        let draggingRow = null;
+        let sourceList = null;
+
+        function productIdsForList(list) {
+            return Array.from(list.querySelectorAll(".product-row"))
+                .map((row) => row.dataset.productId);
+        }
+
+        function updateEmptyState(list) {
+            list.classList.toggle("has-products", productIdsForList(list).length > 0);
+        }
+
+        function saveGroups(lists) {
+            const uniqueLists = Array.from(new Set(lists.filter(Boolean)));
+            if (!uniqueLists.length) {
+                return;
+            }
+
+            const groups = uniqueLists.map((list) => ({
+                category_id: list.dataset.categoryId || null,
+                product_ids: productIdsForList(list),
+            }));
+
+            fetch(reorderUrl, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ groups: groups }),
+            }).then((response) => {
+                if (!response.ok) {
+                    window.location.reload();
+                }
+            }).catch(() => {
+                window.location.reload();
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = Array.from(container.querySelectorAll(".product-row:not(.dragging)"));
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                }
+                return closest;
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        document.querySelectorAll(".product-sortable-list").forEach((list) => {
+            list.addEventListener("dragstart", (event) => {
+                const row = event.target.closest(".product-row");
+                if (!row || !list.contains(row)) {
+                    return;
+                }
+                draggingRow = row;
+                sourceList = list;
+                row.classList.add("dragging");
+                event.dataTransfer.effectAllowed = "move";
+            });
+
+            list.addEventListener("dragover", (event) => {
+                if (!draggingRow) {
+                    return;
+                }
+                event.preventDefault();
+
+                const afterElement = getDragAfterElement(list, event.clientY);
+                if (afterElement == null) {
+                    list.appendChild(draggingRow);
+                } else {
+                    list.insertBefore(draggingRow, afterElement);
+                }
+            });
+
+            list.addEventListener("dragleave", (event) => {
+                if (!list.contains(event.relatedTarget)) {
+                    list.classList.remove("drag-over");
+                }
+            });
+
+            list.addEventListener("dragenter", () => {
+                if (draggingRow) {
+                    list.classList.add("drag-over");
+                }
+            });
+
+            list.addEventListener("drop", (event) => {
+                if (!draggingRow) {
+                    return;
+                }
+                event.preventDefault();
+                list.classList.remove("drag-over");
+                updateEmptyState(list);
+                updateEmptyState(sourceList);
+                saveGroups([sourceList, list]);
+            });
+
+            list.addEventListener("dragend", (event) => {
+                const row = event.target.closest(".product-row");
+                if (row) {
+                    row.classList.remove("dragging");
+                }
+                document.querySelectorAll(".product-sortable-list").forEach((dropList) => {
+                    dropList.classList.remove("drag-over");
+                    updateEmptyState(dropList);
+                });
+                draggingRow = null;
+                sourceList = null;
+            });
+        });
+
+        function setAllCategories(open) {
+            document.querySelectorAll(".product-category-collapse").forEach((collapseEl) => {
+                bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false })[open ? "show" : "hide"]();
+            });
+        }
+
+        document.getElementById("expand-all-products")?.addEventListener("click", () => setAllCategories(true));
+        document.getElementById("collapse-all-products")?.addEventListener("click", () => setAllCategories(false));
+    })();
+</script>
 {% endblock %}

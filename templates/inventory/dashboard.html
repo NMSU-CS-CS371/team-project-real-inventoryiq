@@ -170,6 +170,21 @@
         gap: 1.5rem;
     }
 
+    .dashboard-header-actions {
+        width: 100%;
+    }
+
+    .dashboard-header-actions .btn {
+        white-space: nowrap;
+    }
+
+    @media (min-width: 1200px) {
+        .dashboard-header-actions {
+            width: auto;
+            justify-content: flex-end;
+        }
+    }
+
     .category-link:hover {
         background: #1d1d1d;
         color: #fff !important;
@@ -251,6 +266,21 @@
         padding: 0 1.25rem;
     }
 
+    .dashboard-scroll-list {
+        max-height: 340px;
+        overflow-y: auto;
+        padding-right: 0.25rem;
+    }
+
+    .dashboard-scroll-list::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .dashboard-scroll-list::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.35);
+        border-radius: 999px;
+    }
+
     @media (max-width: 768px) {
         .finance-chart-shell {
             height: 320px;
@@ -272,17 +302,13 @@
                         <h1 class="dash-title mt-3 mb-0" style="font-size: 2.75rem;">Executive Operations Dashboard</h1>
                     </div>
 
-                    <form method="get" class="d-flex flex-column flex-sm-row gap-3 w-100 w-xl-auto">
-                        <input
-                            type="text"
-                            name="q"
-                            value="{{ query }}"
-                            class="form-control dark-input"
-                            placeholder="Search inventory, categories, analytics..."
-                        >
-                        <a href="{% url 'product_list' %}" class="btn btn-dark-soft px-4 py-2">View Inventory</a>
-                        <a href="{% url 'product_add' %}" class="btn btn-emerald px-4 py-2">+ Add Product</a>
-                    </form>
+                    <div class="dashboard-header-actions d-flex flex-wrap gap-2">
+                        <a href="{% url 'product_add' %}" class="btn btn-emerald px-3 py-2">Add Product</a>
+                        <a href="{% url 'category_add' %}" class="btn btn-dark-soft px-3 py-2">Create Category</a>
+                        <a href="{% url 'product_list' %}" class="btn btn-dark-soft px-3 py-2">Adjust Stock</a>
+                        <a href="{% url 'export_csv' %}" class="btn btn-dark-soft px-3 py-2">Export</a>
+                        <a href="{% url 'purchase_order_list' %}" class="btn btn-dark-soft px-3 py-2">Purchase Orders</a>
+                    </div>
                 </div>
             </div>
 
@@ -489,6 +515,32 @@
                                         </tbody>
                                     </table>
                                 </div>
+
+                                <h3 class="dash-title fs-5 mt-4 mb-3">Expense Breakdown</h3>
+                                <div class="table-responsive dash-card-soft dashboard-scroll-list">
+                                    <table class="table table-dark-custom align-middle">
+                                        <thead>
+                                            <tr class="dash-muted">
+                                                <th class="px-4 py-3">Date</th>
+                                                <th class="px-4 py-3">Note</th>
+                                                <th class="px-4 py-3 text-end">Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for expense in recent_expenses %}
+                                            <tr>
+                                                <td class="px-4 py-3">{{ expense.date|date:"M d, Y" }}</td>
+                                                <td class="px-4 py-3 dash-muted">{{ expense.note|default:"—" }}</td>
+                                                <td class="px-4 py-3 text-end fw-semibold text-danger">-${{ expense.amount|floatformat:2 }}</td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="3" class="px-4 py-4 dash-muted">No expenses recorded yet.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -571,18 +623,6 @@
                             </div>
                         </div>
 
-                        <!-- QUICK ACTIONS -->
-                        <div class="dash-card">
-                            <h2 class="dash-title fs-3">Quick Actions</h2>
-                            <div class="mt-4 d-grid gap-3">
-                                <a href="{% url 'product_add' %}" class="btn btn-dark-soft text-start py-3 px-3">Add Product</a>
-                                <a href="{% url 'category_add' %}" class="btn btn-dark-soft text-start py-3 px-3">Create Category</a>
-                                <a href="{% url 'product_list' %}" class="btn btn-dark-soft text-start py-3 px-3">Adjust Stock</a>
-                                <a href="{% url 'export_csv' %}" class="btn btn-dark-soft text-start py-3 px-3">Export</a>
-                                <a href="{% url 'purchase_order_list' %}" class="btn btn-dark-soft text-start py-3 px-3">Purchase Orders</a>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
             </div>
@@ -613,26 +653,17 @@
                     <div class="dash-card h-100">
                         <h2 class="dash-title fs-3">Activity Center</h2>
 
-                        <div class="mt-4 d-grid gap-3">
+                        <div class="mt-4 d-grid gap-3 dashboard-scroll-list">
                             {% for item in activity_items %}
                             <div class="dash-card-soft px-4 py-3 d-flex justify-content-between align-items-start">
                                 <div>
-                                    <div class="fw-semibold">Updated: {{ item.name }}</div>
-                                    <div class="small dash-muted mt-1">
-                                        {% if item.category %}
-                                            {{ item.category.name }}
-                                        {% else %}
-                                            Uncategorized
-                                        {% endif %}
-                                    </div>
-                                    <div class="small dash-muted mt-1">
-                                        Quantity: {{ item.quantity }}
-                                    </div>
+                                    <div class="fw-semibold">{{ item.message }}</div>
+                                    <div class="small dash-muted mt-1">{{ item.activity_type|title }}</div>
                                 </div>
-                                <span class="small dash-muted">{{ item.updated_at|date:"M d, Y" }}</span>
+                                <span class="small dash-muted text-nowrap">{{ item.created_at|date:"M d, Y" }}</span>
                             </div>
                             {% empty %}
-                            <div class="dash-muted">No recent activity right now.</div>
+                            <div class="dash-muted">No activity in the past week.</div>
                             {% endfor %}
                         </div>
                     </div>

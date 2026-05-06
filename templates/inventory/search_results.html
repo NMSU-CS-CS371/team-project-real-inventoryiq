@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}Search — InventoryIQ{% endblock %}
+
+{% block content %}
+<style>
+    .search-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .search-result-list {
+        display: grid;
+        gap: 0.6rem;
+    }
+
+    .search-result {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        color: var(--ink);
+        text-decoration: none;
+    }
+
+    .search-result:hover {
+        background: var(--surface-2);
+        color: var(--ink);
+    }
+
+    .search-type {
+        color: var(--ink-muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
+    <div>
+        <h2 class="mb-1">Search</h2>
+        <p class="text-muted mb-0">
+            {% if query %}Results for "{{ query }}"{% else %}Search products, pages, orders, categories, and expenses.{% endif %}
+        </p>
+    </div>
+    <form method="get" action="{% url 'global_search' %}" class="d-flex gap-2">
+        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search InventoryIQ...">
+        <button type="submit" class="btn btn-dark">Search</button>
+    </form>
+</div>
+
+{% if query %}
+    <div class="search-section">
+        <h4 class="mb-3">Pages</h4>
+        <div class="search-result-list">
+            {% for page in page_results %}
+            <a class="search-result" href="{{ page.url }}">
+                <div>
+                    <div class="fw-semibold">{{ page.title }}</div>
+                    <div class="text-muted small mt-1">{{ page.subtitle }}</div>
+                </div>
+                <span class="search-type">Page</span>
+            </a>
+            {% empty %}
+            <div class="text-muted">No matching pages.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="search-section">
+        <h4 class="mb-3">Products</h4>
+        <div class="search-result-list">
+            {% for product in product_results %}
+            <a class="search-result" href="{% url 'product_list' %}?q={{ query|urlencode }}&highlight_product={{ product.id }}">
+                <div>
+                    <div class="fw-semibold">{{ product.name }}</div>
+                    <div class="text-muted small mt-1">
+                        {% if product.category %}{{ product.category.name }}{% else %}Uncategorized{% endif %}
+                        • Qty {{ product.quantity }}
+                        {% if product.sku_number %} • SKU {{ product.sku_number }}{% endif %}
+                    </div>
+                </div>
+                <span class="search-type">Product</span>
+            </a>
+            {% empty %}
+            <div class="text-muted">No matching products.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="search-section">
+        <h4 class="mb-3">Categories</h4>
+        <div class="search-result-list">
+            {% for category in category_results %}
+            <a class="search-result" href="{% url 'category_detail' category.pk %}">
+                <div>
+                    <div class="fw-semibold">{{ category.name }}</div>
+                    <div class="text-muted small mt-1">
+                        {% if category.parent %}Under {{ category.parent.name }}{% else %}Top-level category{% endif %}
+                    </div>
+                </div>
+                <span class="search-type">Category</span>
+            </a>
+            {% empty %}
+            <div class="text-muted">No matching categories.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="search-section">
+        <h4 class="mb-3">Purchase Orders</h4>
+        <div class="search-result-list">
+            {% for order in order_results %}
+            <a class="search-result" href="{% url 'purchase_order_edit' order.pk %}">
+                <div>
+                    <div class="fw-semibold">{{ order.order_number }}</div>
+                    <div class="text-muted small mt-1">{{ order.get_supplier_display }} • {{ order.get_status_display }}</div>
+                </div>
+                <span class="search-type">Order</span>
+            </a>
+            {% empty %}
+            <div class="text-muted">No matching purchase orders.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="search-section">
+        <h4 class="mb-3">Expenses</h4>
+        <div class="search-result-list">
+            {% for expense in expense_results %}
+            <a class="search-result" href="{% url 'finances' %}">
+                <div>
+                    <div class="fw-semibold">{{ expense.note|default:"Expense" }}</div>
+                    <div class="text-muted small mt-1">${{ expense.amount|floatformat:2 }} • {{ expense.date|date:"M d, Y" }}</div>
+                </div>
+                <span class="search-type">Expense</span>
+            </a>
+            {% empty %}
+            <div class="text-muted">No matching expenses.</div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

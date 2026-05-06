@@ -6,6 +6,11 @@ from .models import Category, Product, Expense, PurchaseOrder, PurchaseOrderItem
 
 class ProductForm(forms.ModelForm):
     # the form for creating and editing products - has fields for name, price, quantity, etc
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['category'].queryset = Category.objects.filter(user=user)
+
     class Meta:
         model = Product
         fields = [
@@ -47,6 +52,11 @@ class ProductForm(forms.ModelForm):
 
 class CategoryForm(forms.ModelForm):
     # the form for creating and editing categories
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['parent'].queryset = Category.objects.filter(user=user)
+
     class Meta:
         model = Category
         fields = ["name", "parent"]
@@ -87,6 +97,11 @@ class PurchaseOrderForm(forms.ModelForm):
 
 class PurchaseOrderItemForm(forms.ModelForm):
     # the form for a single item in a purchase order (like product and quantity)
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['product'].queryset = Product.objects.filter(user=user)
+
     class Meta:
         model = PurchaseOrderItem
         fields = ['product', 'quantity']
