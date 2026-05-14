@@ -38,8 +38,10 @@ team-project-real-inventoryiq/
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.10, 3.11, or 3.12
 - pip
+
+This project currently pins `Pillow==9.5.0`, which does not install cleanly on newer Python versions such as Python 3.14. If your system `python3` is newer than 3.12, install Python 3.12 and use `python3.12` in the setup commands below.
 
 ---
 
@@ -50,7 +52,7 @@ team-project-real-inventoryiq/
 cd team-project-real-inventoryiq
 
 # Create and activate a virtual environment
-python -m venv venv
+python3.12 -m venv venv      # Or use python3.11/python3.10 if that is what you have
 source venv/bin/activate       # Windows: venv\Scripts\activate
 
 # Install dependencies
@@ -58,7 +60,7 @@ pip install -r requirements.txt
 
 # Set up your environment file
 cp .env.example .env
-# Open .env and fill in SECRET_KEY at minimum (see Config section below)
+# Open .env and replace SECRET_KEY with your own value (see Config section below)
 
 # Run migrations
 python manage.py migrate
@@ -89,6 +91,8 @@ All config goes in `.env`. The `.env.example` file shows what's available.
   python -c "import secrets; print(secrets.token_hex(50))"
   ```
 
+For quick local testing, the app has a development fallback key if `.env` is missing. For normal setup, create `.env` anyway so your local config is explicit.
+
 **Email alerts (optional):**
 
 Low-stock alerts are sent via Gmail SMTP. To enable them:
@@ -105,4 +109,11 @@ LOW_STOCK_EMAIL=where-to-send-alerts@example.com
 
 If these aren't set, the app still works — alerts just won't send.
 
+---
+
+## Troubleshooting
+
+- If `pip install -r requirements.txt` fails while building Pillow, check your Python version with `python --version`. Use Python 3.10, 3.11, or 3.12.
+- If `python manage.py runserver` says the port is already in use, run `python manage.py runserver 8001` and open http://127.0.0.1:8001.
+- If you cloned the repo and a `venv/` folder is already present, you can still run `python3.12 -m venv venv` to recreate it for your machine.
 
